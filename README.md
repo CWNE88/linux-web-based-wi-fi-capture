@@ -5,7 +5,8 @@ User can install any number of suitable Wi-Fi adapters, and they will be set to 
 <img width="457" height="525" alt="single adapter capture" src="https://github.com/user-attachments/assets/dd1adea2-5da5-4daf-b773-631beab2d1b2" />
 
 
-Channel selection:
+
+**Channel selection:**
 
 The channel selection is broken up into 3 RF Bands: 2.4 GHz, 5 GHz, and 6 GHz.
 
@@ -24,7 +25,8 @@ Example:
 If channel 40 is selected, it will capture traffic on channel 40 (20 MHz wide), bonded 36 and 40 (40 MHz wide), and bonded 36, 40, 44, and 48 (80 MHz wide). 
 
 
-Dwell time:
+
+**Dwell time:**
 
 This sets how long to stay on each channel. Default is 200 ms.
 
@@ -42,7 +44,7 @@ If no name is given, it will default to the adapter name.
 
 
 
-File split:
+**File split:**
 
 This breaks the packet captures into multiple files, after set time. Default is none for one continuous file.
 
@@ -50,21 +52,24 @@ This breaks the packet captures into multiple files, after set time. Default is 
 <img width="503" height="487" alt="multi adapter capture" src="https://github.com/user-attachments/assets/e7f446a2-c42a-4268-b2d2-b3003c12b969" />
 
 
-Multi-adapter capture:
+
+**Multi-adapter capture:**
 
 If the system has two or more Wi-Fi capture devices, each device can be set to a different channel, and then selected here to enable capturing multiple adapters into a single capture file.
 
 Filename prefix and file split are the same as above for single adapters.
 
 
-Download last capture:
+
+**Download last capture:**
 
 This button downloads the most recent capture directly from the web interface.
 
 If capture is currently running, it will download what has been captured so far without interfering with the current packet capture.
 
 
-Shut down system:
+
+**Shut down system:**
 
 If you need an explanation for this, then this software isn't for you.
 
