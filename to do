@@ -1,0 +1,8 @@
+Adapter display needs to be more robust, because sometimes it shows the non-monitor mode adapter. Example: both wlan1 and wlan1mon when it should only show wlan1mon
+
+When selecting channels, the previously selected channels show which is correct, but it always defaults to 200 ms even if last time had a different selection like 10 sec.
+
+Filename prefix should be filename suffix, as it comes after the date. Also, trailing underscore after adapter name should be removed.
+
+If only one adapter is availble to capture on, then multi-adapter capture section should not appear at all.
+
