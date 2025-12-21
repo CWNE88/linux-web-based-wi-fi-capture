@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wi-Fi Packet Capture Control</title>
+    <style>
+        body { font-family: sans-serif; background: #f8f9fa; padding: 1rem; }
+        .card { border: 1px solid #dee2e6; border-radius: 0.375rem; margin-bottom: 1rem; background: white; }
+        .card-header { background: #e9ecef; padding: 0.75rem; font-weight: bold; }
+        .card-body { padding: 1rem; }
+        .row { display: flex; align-items: flex-start; margin-bottom: 0.5rem; }
+        .label-col { width: 40%; text-align: right; padding-right: 1rem; font-weight: bold; }
+        .value-col { width: 60%; word-wrap: break-word; }
+        .file-split-row { display: flex; gap: 0.25rem; flex-wrap: wrap; }
+        .file-split-btn { flex: 1; min-width: 60px; padding: 0.25rem 0.5rem; border: 1px solid #ccc; background: white; border-radius: 0.25rem; }
+        .file-split-btn.active { background: #0d6efd; color: white; }
+        .btn { padding: 0.5rem 1rem; border: none; border-radius: 0.25rem; cursor: pointer; display: block; margin: 0 auto; max-width: 200px; }
+        .btn-primary { background: #0d6efd; color: white; }
+        .btn-secondary { background: #6c757d; color: white; }
+        .btn-outline-secondary { background: white; color: #6c757d; border: 1px solid #6c757d; text-align: center; width: 100%; }
+        .capturing { background: #28a745 !important; }
+        input[type="text"] { width: 100%; padding: 0.375rem; border: 1px solid #ccc; border-radius: 0.25rem; }
+        .channels-btn-row { text-align: center; margin-bottom: 0.5rem; width: 100%; }
+        #adapters-container { max-width: 400px; margin: 0 auto; }
+        .modal { display: flex; align-items: center; justify-content: center; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; }
+        .modal-dialog { max-width: 90%; margin: auto; background: white; border-radius: 0.375rem; overflow: hidden; max-height: 80vh; overflow-y: auto; }
+        .modal-header { background: #e9ecef; padding: 1rem; display: flex; justify-content: space-between; align-items: center; }
+        .modal-title { margin: 0; font-weight: bold; }
+        .btn-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; }
+        .modal-body { padding: 1rem; }
+        .band-section { margin-bottom: 1rem; }
+        .band-heading { font-weight: bold; margin-bottom: 0.5rem; font-size: 1.1em; }
+        .checkbox-row { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.25rem; }
+        .form-check { flex: 1 1 calc(25% - 1rem); min-width: 60px; }
+        .form-check-2-4 { flex: 1 1 calc(20% - 1rem); min-width: 50px; }
+        .all-btn { padding: 0.25rem 0.5rem; background: #6c757d; color: white; border: none; border-radius: 0.25rem; cursor: pointer; font-size: 0.875rem; margin-top: 0.5rem; }
+        .dwell-row { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+        .dwell-btn { padding: 0.25rem 0.5rem; border: 1px solid #ccc; background: white; cursor: pointer; white-space: nowrap; border-radius: 0.25rem; }
+        .dwell-btn.active { background: #0d6efd; color: white; }
+        .modal-footer { padding: 1rem; border-top: 1px solid #dee2e6; display: flex; justify-content: center; }
+        .notification { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); background: #dc3545; color: #fff; padding: 10px 15px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); z-index: 1000; font-size: 1rem; max-width: 90%; text-align: center; }
+    </style>
+</head>
+<body>
+    <div id="adapters-container" style="max-width: 400px; margin: 0 auto;"></div>
+
+    <div class="card" id="multi-card" style="max-width: 400px; margin: 0 auto;">
+        <div class="card-header">Multi-adapter capture</div>
+        <div class="card-body">
+            <div id="multi-adapters-select">
+                <label>Selected adapters:</label><br>
+            </div>
+            <div class="row">
+                <div class="label-col">Filename prefix:</div>
+                <div class="value-col"><input type="text" id="multi-filename" value="multi_capture_"></div>
+            </div>
+            <div class="row">
+                <div class="label-col">File split:</div>
+                <div class="value-col" id="multi-split">
+                    <div class="file-split-row">
+                        <button class="file-split-btn active" data-split="None">None</button>
+                        <button class="file-split-btn" data-split="1 min">1 min</button>
+                        <button class="file-split-btn" data-split="5 min">5 min</button>
+                    </div>
+                    <div class="file-split-row" style="margin-top: 0.25rem;">
+                        <button class="file-split-btn" data-split="10 min">10 min</button>
+                        <button class="file-split-btn" data-split="1 hr">1 hr</button>
+                        <button class="file-split-btn" data-split="1 day">1 day</button>
+                    </div>
+                </div>
+            </div>
+            <button class="btn btn-primary" id="multi-capture-btn">Capture combined</button>
+            <div class="row" id="multi-file-name">
+                <div class="label-col">File name:</div>
+                <div class="value-col">None</div>
+            </div>
+            <div class="row">
+                <div class="label-col">File size:</div>
+                <div class="value-col"><span id="multi-size">0 MB</span></div>
+            </div>
+            <button class="btn btn-secondary" id="multi-download" disabled>Download last capture</button>
+        </div>
+    </div>
+
+    <div style="text-align: center; margin-top: 1rem;">
+        <button class="btn btn-primary" id="shutdown-btn">Shut down system</button>
+    </div>
+
+    <!-- Channel Modal -->
+    <div id="channelModal" class="modal" style="display: none;">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <h5 class="modal-title">Select channels</h5>
+                <button class="btn-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <!-- 2.4GHz Section -->
+                <div class="band-section">
+                    <div class="band-heading">2.4 GHz</div>
+                    <div class="checkbox-row">
+                        <div class="form-check-2-4"><input class="form-check-input" type="checkbox" id="ch24-1"><label for="ch24-1">1</label></div>
+                        <div class="form-check-2-4"><input class="form-check-input" type="checkbox" id="ch24-2"><label for="ch24-2">2</label></div>
+                        <div class="form-check-2-4"><input class="form-check-input" type="checkbox" id="ch24-3"><label for="ch24-3">3</label></div>
+                        <div class="form-check-2-4"><input class="form-check-input" type="checkbox" id="ch24-4"><label for="ch24-4">4</label></div>
+                        <div class="form-check-2-4"><input class="form-check-input" type="checkbox" id="ch24-5"><label for="ch24-5">5</label></div>
+                    </div>
+                    <div class="checkbox-row">
+                        <div class="form-check-2-4"><input class="form-check-input" type="checkbox" id="ch24-6"><label for="ch24-6">6</label></div>
+                        <div class="form-check-2-4"><input class="form-check-input" type="checkbox" id="ch24-7"><label for="ch24-7">7</label></div>
+                        <div class="form-check-2-4"><input class="form-check-input" type="checkbox" id="ch24-8"><label for="ch24-8">8</label></div>
+                        <div class="form-check-2-4"><input class="form-check-input" type="checkbox" id="ch24-9"><label for="ch24-9">9</label></div>
+                        <div class="form-check-2-4"><input class="form-check-input" type="checkbox" id="ch24-10"><label for="ch24-10">10</label></div>
+                    </div>
+                    <div class="checkbox-row">
+                        <div class="form-check-2-4"><input class="form-check-input" type="checkbox" id="ch24-11"><label for="ch24-11">11</label></div>
+                        <div class="form-check-2-4"><input class="form-check-input" type="checkbox" id="ch24-12"><label for="ch24-12">12</label></div>
+                        <div class="form-check-2-4"><input class="form-check-input" type="checkbox" id="ch24-13"><label for="ch24-13">13</label></div>
+                        <div class="form-check-2-4"><input class="form-check-input" type="checkbox" id="ch24-14"><label for="ch24-14">14</label></div>
+                        <div class="form-check-2-4"></div>
+                    </div>
+                    <button class="all-btn" onclick="selectAll('24')">All</button>
+                </div>
+
+                <!-- 5GHz Section -->
+                <div class="band-section">
+                    <div class="band-heading">5 GHz</div>
+                    <div class="checkbox-row">
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="ch5-36"><label for="ch5-36">36</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="ch5-40"><label for="ch5-40">40</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="ch5-44"><label for="ch5-44">44</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="ch5-48"><label for="ch5-48">48</label></div>
+                    </div>
+                    <div class="checkbox-row">
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="ch5-52"><label for="ch5-52">52</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="ch5-56"><label for="ch5-56">56</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="ch5-60"><label for="ch5-60">60</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="ch5-64"><label for="ch5-64">64</label></div>
+                    </div>
+                    <div class="checkbox-row">
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="ch5-100"><label for="ch5-100">100</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="ch5-104"><label for="ch5-104">104</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="ch5-108"><label for="ch5-108">108</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="ch5-112"><label for="ch5-112">112</label></div>
+                    </div>
+                    <div class="checkbox-row">
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="ch5-116"><label for="ch5-116">116</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="ch5-120"><label for="ch5-120">120</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="ch5-124"><label for="ch5-124">124</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="ch5-128"><label for="ch5-128">128</label></div>
+                    </div>
+                    <div class="checkbox-row">
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="ch5-132"><label for="ch5-132">132</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="ch5-136"><label for="ch5-136">136</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="ch5-140"><label for="ch5-140">140</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="ch5-144"><label for="ch5-144">144</label></div>
+                    </div>
+                    <div class="checkbox-row">
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="ch5-149"><label for="ch5-149">149</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="ch5-153"><label for="ch5-153">153</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="ch5-157"><label for="ch5-157">157</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="ch5-161"><label for="ch5-161">161</label></div>
+                    </div>
+                    <div class="checkbox-row">
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="ch5-165"><label for="ch5-165">165</label></div>
+                        <div class="form-check"></div>
+                        <div class="form-check"></div>
+                        <div class="form-check"></div>
+                    </div>
+                    <button class="all-btn" onclick="selectAll('5')">All</button>
+                </div>
+
+                <!-- 6GHz Section -->
+                <div class="band-section">
+                    <div class="band-heading">6 GHz</div>
+                    <div class="checkbox-row">
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="ch6-1"><label for="ch6-1">1</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="ch6-5"><label for="ch6-5">5</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="ch6-9"><label for="ch6-9">9</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="ch6-13"><label for="ch6-13">13</label></div>
+                    </div>
+                    <div class="checkbox-row">
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="ch6-17"><label for="ch6-17">17</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="ch6-21"><label for="ch6-21">21</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="ch6-25"><label for="ch6-25">25</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="ch6-29"><label for="ch6-29">29</label></div>
+                    </div>
+                    <div class="checkbox-row">
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="ch6-33"><label for="ch6-33">33</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="ch6-37"><label for="ch6-37">37</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="ch6-41"><label for="ch6-41">41</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="ch6-45"><label for="ch6-45">45</label></div>
+                    </div>
+                    <div class="checkbox-row">
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="ch6-49"><label for="ch6-49">49</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="ch6-53"><label for="ch6-53">53</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="ch6-57"><label for="ch6-57">57</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="ch6-61"><label for="ch6-61">61</label></div>
+                    </div>
+                    <div class="checkbox-row">
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="ch6-65"><label for="ch6-65">65</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="ch6-69"><label for="ch6-69">69</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="ch6-73"><label for="ch6-73">73</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="ch6-77"><label for="ch6-77">77</label></div>
+                    </div>
+                    <div class="checkbox-row">
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="ch6-81"><label for="ch6-81">81</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="ch6-85"><label for="ch6-85">85</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="ch6-89"><label for="ch6-89">89</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="ch6-93"><label for="ch6-93">93</label></div>
+                    </div>
+                    <button class="all-btn" onclick="selectAll('6')">All</button>
+                </div>
+
+                <!-- Dwell Time Section -->
+                <div class="band-section">
+                    <div class="band-heading">Dwell time</div>
+                    <div class="dwell-row">
+                        <button class="dwell-btn active" data-dwell="200ms">200 ms</button>
+                        <button class="dwell-btn" data-dwell="500ms">500 ms</button>
+                        <button class="dwell-btn" data-dwell="1s">1 sec</button>
+                        <button class="dwell-btn" data-dwell="5s">5 sec</button>
+                    </div>
+                    <div class="dwell-row" style="margin-top: 0.25rem;">
+                        <button class="dwell-btn" data-dwell="10s">10 sec</button>
+                        <button class="dwell-btn" data-dwell="1m">1 min</button>
+                        <button class="dwell-btn" data-dwell="5m">5 min</button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="saveChannels()">Set</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Shutdown Modal -->
+    <div class="modal" id="shutdown-modal" style="display: none;">
+        <div class="modal-dialog">
+            <div class="modal-body">
+                <p>Shut down?</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="shutdown-no">No</button>
+                <button class="btn btn-primary" id="shutdown-yes">Yes</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentAdapter = null;
+        let currentCardBody = null;
+        let previousChannelCount = 0;
+        let selectedAdapters = [];
+        const channelToFreq = {
+            '2.4': {
+                '1': 2412, '2': 2417, '3': 2422, '4': 2427, '5': 2432,
+                '6': 2437, '7': 2442, '8': 2447, '9': 2452, '10': 2457,
+                '11': 2462, '12': 2467, '13': 2472, '14': 2484
+            },
+            '5': {
+                '36': 5180, '40': 5200, '44': 5220, '48': 5240, '52': 5260,
+                '56': 5280, '60': 5300, '64': 5320, '100': 5500, '104': 5520,
+                '108': 5540, '112': 5560, '116': 5580, '120': 5600, '124': 5620,
+                '128': 5640, '132': 5660, '136': 5680, '140': 5700, '144': 5720,
+                '149': 5745, '153': 5765, '157': 5785, '161': 5805, '165': 5825
+            },
+            '6': {
+                '1': 5955, '5': 5975, '9': 5995, '13': 6015, '17': 6035,
+                '21': 6055, '25': 6075, '29': 6095, '33': 6115, '37': 6135,
+                '41': 6155, '45': 6175, '49': 6195, '53': 6215, '57': 6235,
+                '61': 6255, '65': 6275, '69': 6295, '73': 6315, '77': 6335,
+                '81': 6355, '85': 6375, '89': 6395, '93': 6415
+            }
+        };
+        const freqToChannel = {};
+        Object.keys(channelToFreq['2.4']).forEach(ch => freqToChannel[channelToFreq['2.4'][ch]] = { band: '2.4', channel: ch });
+        Object.keys(channelToFreq['5']).forEach(ch => freqToChannel[channelToFreq['5'][ch]] = { band: '5', channel: ch });
+        Object.keys(channelToFreq['6']).forEach(ch => freqToChannel[channelToFreq['6'][ch]] = { band: '6', channel: ch });
+        const dwellMap = {
+            '200ms': 200, '500ms': 500, '1s': 1000, '5s': 5000,
+            '10s': 10000, '1m': 60000, '5m': 300000
+        };
+        const dwellDisplayMap = {
+            200: '200 ms', 500: '500 ms', 1000: '1 sec', 5000: '5 sec',
+            10000: '10 sec', 60000: '1 min', 300000: '5 min'
+        };
+        const splitMap = {
+            'None': 0, '1 min': 60, '5 min': 300, '10 min': 600, '1 hr': 3600, '1 day': 86400
+        };
+
+        function showNotification(message) {
+            const notification = document.createElement('div');
+            notification.className = 'notification';
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                setTimeout(() => notification.remove(), 500);
+            }, 3000);
+        }
+
+        function updateAdapters() {
+            fetch('/adapters')
+                .then(response => response.json())
+                .then(data => {
+                    const container = document.getElementById('adapters-container');
+                    container.innerHTML = '';
+
+                    data.adapters.forEach(ad => {
+                        const card = createAdapterCard(ad);
+                        container.appendChild(card);
+                    });
+
+                    updateMultiCard(data.multi, data.adapters);
+                })
+                .catch(error => console.error('Error fetching adapters:', error));
+        }
+
+        function updateMultiCard(multi, adapters) {
+            const multiSelect = document.getElementById('multi-adapters-select');
+            multiSelect.innerHTML = '<label>Selected adapters:</label><br>';
+            const monAdapters = adapters.filter(a => a.is_monitor);
+            monAdapters.forEach(ad => {
+                const label = document.createElement('label');
+                label.innerHTML = `<input type="checkbox" value="${ad.name}" ${selectedAdapters.includes(ad.name) ? 'checked' : ''}> ${ad.name}`;
+                label.querySelector('input').onchange = e => {
+                    if (e.target.checked) selectedAdapters.push(ad.name);
+                    else selectedAdapters = selectedAdapters.filter(v => v !== ad.name);
+                };
+                multiSelect.appendChild(label);
+                multiSelect.appendChild(document.createElement('br'));
+            });
+
+            const multiActive = multi.busy || false;
+            const multiBtn = document.getElementById('multi-capture-btn');
+            multiBtn.classList.toggle('capturing', multiActive);
+            multiBtn.textContent = multiActive ? 'Stop capturing' : 'Capture combined';
+            const multiDl = document.getElementById('multi-download');
+            const fileNameCol = document.getElementById('multi-file-name').querySelector('.value-col');
+            const multiSize = document.getElementById('multi-size');
+            if (multiActive) {
+                selectedAdapters = multi.adapters || [];
+                fileNameCol.textContent = (multi.pcap_file ? multi.pcap_file.split('/').pop() : 'None') + (multi.split_time > 0 ? ' (split)' : '');
+                multiSize.textContent = `${multi.filesize || 0} MB`;
+                multiDl.disabled = false;
+                multiDl.onclick = () => window.location.href = '/download/multi';
+                let activeSplit = multi.split_time === 0 ? 'None' : multi.split_time === 60 ? '1 min' : multi.split_time === 300 ? '5 min' : multi.split_time === 600 ? '10 min' : multi.split_time === 3600 ? '1 hr' : '1 day';
+                document.getElementById('multi-split').querySelectorAll('.file-split-btn').forEach(b => b.classList.remove('active'));
+                const activeBtn = document.querySelector(`#multi-split .file-split-btn[data-split="${activeSplit}"]`);
+                if (activeBtn) activeBtn.classList.add('active');
+            } else {
+                if (multi.last_pcap_file) {
+                    fileNameCol.textContent = (multi.last_pcap_file.split('/').pop() || 'None') + (multi.last_split_time > 0 ? ' (split)' : '') + ' (last)';
+                    multiSize.textContent = `${multi.last_filesize || 0} MB`;
+                    multiDl.disabled = false;
+                    multiDl.onclick = () => window.location.href = '/download/multi';
+                } else {
+                    fileNameCol.textContent = 'None';
+                    multiSize.textContent = '0 MB';
+                    multiDl.disabled = true;
+                }
+            }
+            multiSelect.querySelectorAll('input').forEach(inp => inp.disabled = multiActive);
+            document.getElementById('multi-filename').disabled = multiActive;
+            document.getElementById('multi-split').querySelectorAll('button').forEach(b => b.disabled = multiActive);
+        }
+
+        function updateFileSizes() {
+            fetch('/adapters')
+                .then(response => response.json())
+                .then(data => {
+                    data.adapters.forEach(ad => {
+                        if (ad.dumpcap_busy) {
+                            fetch('/filesize', {
+                                method: 'POST',
+                                headers: {'Content-Type': 'application/json'},
+                                body: JSON.stringify({adapter: ad.name})
+                            })
+                                .then(res => res.json())
+                                .then(sizeData => {
+                                    const sizeSpan = document.getElementById(`size-${ad.name}`);
+                                    if (sizeSpan) sizeSpan.textContent = `${sizeData.filesize} MB`;
+                                });
+                        }
+                    });
+                    if (data.multi.busy) {
+                        fetch('/filesize', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({adapter: 'multi'})
+                        })
+                            .then(res => res.json())
+                            .then(sizeData => {
+                                document.getElementById('multi-size').textContent = `${sizeData.filesize} MB`;
+                            });
+                    }
+                });
+        }
+
+        function createAdapterCard(ad) {
+            const card = document.createElement('div');
+            card.className = 'card';
+            const header = document.createElement('div');
+            header.className = 'card-header';
+            header.textContent = `Adapter: ${ad.name}`;
+            card.appendChild(header);
+            const body = document.createElement('div');
+            body.className = 'card-body';
+            body.dataset.frequencies = ad.frequencies;
+            body.dataset.channels = ad.channels;
+            body.dataset.adapter = ad.name;
+
+            // Channels button row
+            const channelsBtnRow = createRow('Channels:', '');
+            const channelsValue = channelsBtnRow.querySelector('.value-col');
+            const selectBtn = document.createElement('button');
+            selectBtn.className = 'btn btn-outline-secondary';
+            selectBtn.textContent = 'Select channels';
+            selectBtn.onclick = () => openModal(ad.name, body);
+            channelsValue.appendChild(selectBtn);
+            body.appendChild(channelsBtnRow);
+
+            // 2.4GHz row
+            const ch24 = ad.frequencies
+                .filter(f => parseInt(f) < 3000)
+                .map(f => freqToChannel[parseInt(f)]?.channel || 'Unknown')
+                .filter(ch => ch !== 'Unknown')
+                .sort((a, b) => parseInt(a) - parseInt(b));
+            const ch24Row = createRow('2.4 GHz:', ch24.length ? ch24.join(', ') : 'None');
+            body.appendChild(ch24Row);
+
+            // 5GHz row
+            const ch5 = ad.frequencies
+                .filter(f => parseInt(f) >= 3000 && parseInt(f) < 5900)
+                .map(f => freqToChannel[parseInt(f)]?.channel || 'Unknown')
+                .filter(ch => ch !== 'Unknown')
+                .sort((a, b) => parseInt(a) - parseInt(b));
+            const ch5Row = createRow('5 GHz:', ch5.length ? ch5.join(', ') : 'None');
+            body.appendChild(ch5Row);
+
+            // 6GHz row
+            const ch6 = ad.frequencies
+                .filter(f => parseInt(f) >= 5900)
+                .map(f => freqToChannel[parseInt(f)]?.channel || 'Unknown')
+                .filter(ch => ch !== 'Unknown')
+                .sort((a, b) => parseInt(a) - parseInt(b));
+            const ch6Row = createRow('6 GHz:', ch6.length ? ch6.join(', ') : 'None');
+            body.appendChild(ch6Row);
+
+            // Dwell row
+            const totalChannels = ch24.length + ch5.length + ch6.length;
+            const dwellDisplay = totalChannels <= 1 ? 'N/A' : dwellDisplayMap[ad.dwell_time] || 'N/A';
+            const dwellRow = createRow('Dwell:', dwellDisplay);
+            body.appendChild(dwellRow);
+
+            // Filename prefix
+            const filenameRow = createRow('Filename prefix:', '');
+            const filenameValue = filenameRow.querySelector('.value-col');
+            const filenameInput = document.createElement('input');
+            filenameInput.type = 'text';
+            filenameInput.value = `capture_${ad.name.replace('mon', '')}_`;
+            filenameInput.disabled = ad.dumpcap_busy;
+            filenameValue.appendChild(filenameInput);
+            body.appendChild(filenameRow);
+
+            // File split
+            const splitRow = createRow('File split:', '');
+            const splitValue = splitRow.querySelector('.value-col');
+            const splitRow1 = document.createElement('div');
+            splitRow1.className = 'file-split-row';
+            const activeSplit = ad.split_time === 0 ? 'None' : ad.split_time === 60 ? '1 min' : ad.split_time === 300 ? '5 min' : ad.split_time === 600 ? '10 min' : ad.split_time === 3600 ? '1 hr' : '1 day';
+            ['None', '1 min', '5 min'].forEach(s => {
+                const b = document.createElement('button');
+                b.className = `file-split-btn${activeSplit === s ? ' active' : ''}`;
+                b.dataset.split = s;
+                b.textContent = s;
+                b.disabled = ad.dumpcap_busy;
+                b.onclick = toggleSplit;
+                splitRow1.appendChild(b);
+            });
+            splitValue.appendChild(splitRow1);
+            const splitRow2 = document.createElement('div');
+            splitRow2.className = 'file-split-row';
+            splitRow2.style.marginTop = '0.25rem';
+            ['10 min', '1 hr', '1 day'].forEach(s => {
+                const b = document.createElement('button');
+                b.className = `file-split-btn${activeSplit === s ? ' active' : ''}`;
+                b.dataset.split = s;
+                b.textContent = s;
+                b.disabled = ad.dumpcap_busy;
+                b.onclick = toggleSplit;
+                splitRow2.appendChild(b);
+            });
+            splitValue.appendChild(splitRow2);
+            body.appendChild(splitRow);
+
+            // Capture button
+            const captureBtn = document.createElement('button');
+            captureBtn.className = `btn btn-primary${ad.dumpcap_busy ? ' capturing' : ''}`;
+            captureBtn.textContent = ad.dumpcap_busy ? 'Stop capturing' : 'Capture';
+            captureBtn.onclick = () => handleCapture(ad.name, body);
+            body.appendChild(captureBtn);
+
+            // File name row
+            let fileText = 'None';
+            if (ad.dumpcap_busy) {
+                fileText = (ad.pcap_file ? ad.pcap_file.split('/').pop() : 'None') + (ad.split_time > 0 ? ' (split)' : '');
+            } else if (ad.last_pcap_file) {
+                fileText = ad.last_pcap_file.split('/').pop() + (ad.last_split_time > 0 ? ' (split)' : '') + ' (last)';
+            }
+            const fileNameRow = createRow('File name:', fileText);
+            body.appendChild(fileNameRow);
+
+            // File size row
+            let sizeText = '0 MB';
+            if (ad.dumpcap_busy) {
+                sizeText = `${ad.filesize} MB`;
+            } else if (ad.last_pcap_file) {
+                sizeText = `${ad.last_filesize} MB`;
+            }
+            const fileSizeRow = createRow('File size:', '');
+            const fileSizeValue = fileSizeRow.querySelector('.value-col');
+            const sizeSpan = document.createElement('span');
+            sizeSpan.id = `size-${ad.name}`;
+            sizeSpan.textContent = sizeText;
+            fileSizeValue.appendChild(sizeSpan);
+            body.appendChild(fileSizeRow);
+
+            // Download button
+            const downloadBtn = document.createElement('button');
+            downloadBtn.className = 'btn btn-secondary';
+            downloadBtn.textContent = ad.dumpcap_busy ? 'Download current capture' : 'Download last capture';
+            downloadBtn.disabled = !ad.dumpcap_busy && !ad.last_pcap_file;
+            downloadBtn.onclick = () => window.location.href = `/download/${ad.name}`;
+            body.appendChild(downloadBtn);
+
+            card.appendChild(body);
+            return card;
+        }
+
+        function createRow(label, value) {
+            const row = document.createElement('div');
+            row.className = 'row';
+            const labelCol = document.createElement('div');
+            labelCol.className = 'label-col';
+            labelCol.textContent = label;
+            row.appendChild(labelCol);
+            const valueCol = document.createElement('div');
+            valueCol.className = 'value-col';
+            valueCol.innerHTML = value;
+            row.appendChild(valueCol);
+            return row;
+        }
+
+        function toggleSplit(e) {
+            const btn = e.target;
+            if (btn.disabled) return;
+            btn.closest('.value-col').querySelectorAll('.file-split-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        }
+
+        function handleCapture(adapter, body) {
+            const btn = body.querySelector('.btn-primary');
+            if (btn.classList.contains('capturing')) {
+                fetch('/stop_capture', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({adapter})
+                })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.error) showNotification(data.error);
+                        updateAdapters();
+                    });
+            } else {
+                const filename = body.querySelector('input[type="text"]').value;
+                const split = body.querySelector('.file-split-btn.active').dataset.split;
+                const split_time = splitMap[split];
+                fetch('/start_capture', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({adapter, filename, split_time})
+                })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.error) showNotification(data.error);
+                        updateAdapters();
+                    });
+            }
+        }
+
+        function handleMultiCapture() {
+            const btn = document.getElementById('multi-capture-btn');
+            if (btn.classList.contains('capturing')) {
+                fetch('/stop_dumpcap', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({})
+                })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.error) showNotification(data.error);
+                        updateAdapters();
+                    });
+            } else {
+                if (selectedAdapters.length < 2) {
+                    showNotification('Select at least two adapters');
+                    return;
+                }
+                const filename = document.getElementById('multi-filename').value;
+                const split = document.getElementById('multi-split').querySelector('.file-split-btn.active').dataset.split;
+                const split_time = splitMap[split];
+                fetch('/start_dumpcap', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({adapters: selectedAdapters, filename, split_time})
+                })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.error) showNotification(data.error);
+                        updateAdapters();
+                    });
+            }
+        }
+
+        function openModal(adapter, body) {
+            currentAdapter = adapter;
+            currentCardBody = body;
+            document.querySelectorAll('.form-check-input').forEach(cb => cb.checked = false);
+            const ch24Row = body.querySelectorAll('.row')[1].querySelector('.value-col').textContent;
+            const ch5Row = body.querySelectorAll('.row')[2].querySelector('.value-col').textContent;
+            const ch6Row = body.querySelectorAll('.row')[3].querySelector('.value-col').textContent;
+            let ch24 = ch24Row === 'None' ? [] : ch24Row.split(', ');
+            let ch5 = ch5Row === 'None' ? [] : ch5Row.split(', ');
+            let ch6 = ch6Row === 'None' ? [] : ch6Row.split(', ');
+            previousChannelCount = ch24.length + ch5.length + ch6.length;
+            ch24.forEach(ch => { const cb = document.getElementById(`ch24-${ch}`); if (cb) cb.checked = true; });
+            ch5.forEach(ch => { const cb = document.getElementById(`ch5-${ch}`); if (cb) cb.checked = true; });
+            ch6.forEach(ch => { const cb = document.getElementById(`ch6-${ch}`); if (cb) cb.checked = true; });
+            document.querySelectorAll('.dwell-btn').forEach(b => b.classList.remove('active'));
+            document.querySelector('.dwell-btn[data-dwell="200ms"]').classList.add('active');
+            document.getElementById('channelModal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('channelModal').style.display = 'none';
+        }
+
+        function selectAll(band) {
+            const prefix = `ch${band}-`;
+            const cbs = document.querySelectorAll(`input[id^="${prefix}"]`);
+            const allChecked = Array.from(cbs).every(cb => cb.checked);
+            cbs.forEach(cb => cb.checked = !allChecked);
+        }
+
+        function saveChannels() {
+            let ch24 = [];
+            document.querySelectorAll('input[id^="ch24-"]:checked').forEach(inp => ch24.push(inp.id.split('-')[1]));
+            ch24.sort((a, b) => parseInt(a) - parseInt(b));
+            let ch24Str = ch24.length ? ch24.join(', ') : 'None';
+            let ch5 = [];
+            document.querySelectorAll('input[id^="ch5-"]:checked').forEach(inp => ch5.push(inp.id.split('-')[1]));
+            ch5.sort((a, b) => parseInt(a) - parseInt(b));
+            let ch5Str = ch5.length ? ch5.join(', ') : 'None';
+            let ch6 = [];
+            document.querySelectorAll('input[id^="ch6-"]:checked').forEach(inp => ch6.push(inp.id.split('-')[1]));
+            ch6.sort((a, b) => parseInt(a) - parseInt(b));
+            let ch6Str = ch6.length ? ch6.join(', ') : 'None';
+            const newCount = ch24.length + ch5.length + ch6.length;
+
+            const ch24Row = currentCardBody.querySelectorAll('.row')[1].querySelector('.value-col');
+            ch24Row.textContent = ch24Str;
+            const ch5Row = currentCardBody.querySelectorAll('.row')[2].querySelector('.value-col');
+            ch5Row.textContent = ch5Str;
+            const ch6Row = currentCardBody.querySelectorAll('.row')[3].querySelector('.value-col');
+            ch6Row.textContent = ch6Str;
+            const activeDwell = document.querySelector('.dwell-btn.active').dataset.dwell;
+            const dwellCol = currentCardBody.querySelectorAll('.row')[4].querySelector('.value-col');
+            dwellCol.textContent = newCount <= 1 ? 'N/A' : dwellDisplayMap[dwellMap[activeDwell]];
+            closeModal();
+
+            let frequencies = [];
+            ch24.forEach(ch => frequencies.push(channelToFreq['2.4'][ch]));
+            ch5.forEach(ch => frequencies.push(channelToFreq['5'][ch]));
+            ch6.forEach(ch => frequencies.push(channelToFreq['6'][ch]));
+            const dwell_time = dwellMap[activeDwell];
+
+            if (newCount > 0) {
+                fetch('/start_monitoring', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({adapter: currentAdapter, frequencies, dwell_time})
+                })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.error) showNotification(data.error);
+                        updateAdapters();
+                    });
+            } else if (previousChannelCount > 0) {
+                fetch('/stop_monitoring', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({adapter: currentAdapter})
+                })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.error) showNotification(data.error);
+                        updateAdapters();
+                    });
+            }
+        }
+
+        const shutdownModal = document.getElementById('shutdown-modal');
+        const shutdownBtn = document.getElementById('shutdown-btn');
+        const shutdownNo = document.getElementById('shutdown-no');
+        const shutdownYes = document.getElementById('shutdown-yes');
+        shutdownBtn.onclick = () => shutdownModal.style.display = 'flex';
+        shutdownNo.onclick = () => shutdownModal.style.display = 'none';
+        shutdownYes.onclick = () => {
+            fetch('/shutdown', {method: 'POST'})
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') showNotification('System is shutting down...');
+                    else showNotification('Failed to shut down system');
+                });
+            shutdownModal.style.display = 'none';
+        };
+
+        document.getElementById('multi-capture-btn').onclick = handleMultiCapture;
+        document.querySelectorAll('.dwell-btn').forEach(btn => btn.onclick = (e) => {
+            document.querySelectorAll('.dwell-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+        });
+
+        document.querySelectorAll('#multi-split .file-split-btn').forEach(b => b.onclick = toggleSplit);
+
+        updateAdapters();
+        setInterval(() => {
+            if (!document.activeElement || document.activeElement.tagName !== 'INPUT') {
+                updateAdapters();
+                updateFileSizes();
+            }
+        }, 5000);
+    </script>
+</body>
+</html>
