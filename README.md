@@ -1,5 +1,17 @@
 This program can be installed on a Raspberry Pi (or any Linux box) to provide an easy Wi-Fi packet capture tool.
 
+Once installed, it is controlled by a web browser on any operating system, so you're not tied to a specific vendor OS.
+
+When installed on a Raspberry Pi with a suitable USB Wi-Fi capturing adapter, the Raspberry Pi's own built in Wi-Fi adapter is just used as a control interface, not to capture.
+
+The Raspberry Pi can be connected to a mobile phone hotspot, and controlled directly with a browser pointing to the IP address of the Raspberry Pi.
+
+To connect to the web UI go to:
+
+http://IPADDRESS:5000
+
+For added flexibility, you could install Wireguard VPN on the Raspberry Pi to connect it back to your network, and then connect to it remotely via Wireguard.
+
 User can install any number of suitable Wi-Fi adapters, and they will be set to monitor mode and made available to capture packets.
 
 <img width="457" height="525" alt="single adapter capture" src="https://github.com/user-attachments/assets/dd1adea2-5da5-4daf-b773-631beab2d1b2" />
