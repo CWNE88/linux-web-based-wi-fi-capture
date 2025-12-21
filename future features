@@ -4,5 +4,5 @@ There is some room for minimal extra features.
 
 There will be options to capture only specific types of traffic, like management, control, or data frames (or any combination of them).
 
-There can be some specific sub-types too, like beacons, association, probe, EAPOL. This can be very useful when trying to capture clients joining a network, without having to capture everything else in the air and creating excessivly large capture files.
+There can be some specific sub-types too, like beacons, association, probe, EAPOL. This can be very useful when trying to capture clients joining a network, without having to capture everything else in the air and creating excessively large capture files.
 
