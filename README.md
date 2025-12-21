@@ -32,7 +32,7 @@ This sets how long to stay on each channel. Default is 200 ms.
 
 
 
-Filename prefix:
+**Filename prefix:**
 
 This adds a convenient name to the packet capture file, which gets appended to the time.
 
