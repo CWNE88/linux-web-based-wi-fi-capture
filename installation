@@ -44,8 +44,8 @@ After=network-online.target
 Wants=network-online.target
 
 [Service]
-User=spicy
-Group=spicy
+User=pi
+Group=pi
 WorkingDirectory=/opt/capture
 Environment="PATH=/opt/capture/python/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 #ExecStartPre=/bin/sleep 10
