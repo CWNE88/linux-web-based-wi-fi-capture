@@ -1,0 +1,63 @@
+This is for Raspberry Pi installation.
+
+sudo apt install aircrack-ng tcpdump tshark screen
+
+sudo chmod 755 /usr/bin/dumpcap
+
+sudo setcap cap_net_admin,cap_net_raw+eip /usr/bin/dumpcap
+
+sudo setcap cap_net_admin,cap_net_raw+eip /usr/bin/tcpdump
+
+
+sudo mkdir /opt/capture
+
+sudo chown pi:pi /opt/capture
+
+mkdir /opt/capture/static
+
+cd /opt/capture/
+
+python3 -m venv python
+
+source /opt/capture/python/bin/activate
+
+pip install flask
+
+pip install tzlocal
+
+pip install pytz
+
+pip install gunicorn
+
+# copy files into:
+
+/opt/capture/app.py
+
+/opt/capture/static/index.html
+
+
+# create file /etc/systemd/system/capture.service
+
+[Unit]
+Description=Wi-Fi capture
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=spicy
+Group=spicy
+WorkingDirectory=/opt/capture
+Environment="PATH=/opt/capture/python/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+#ExecStartPre=/bin/sleep 10
+ExecStart=/opt/capture/python/bin/gunicorn --timeout 300 --workers 1 --bind 0.0.0.0:5000 --log-level debug --log-file /opt/capture/gunicorn.log app:app
+Restart=always
+RestartSec=5
+TimeoutStartSec=60
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target
+
+sudo systemctl enable capture.service
+
+
