@@ -6,8 +6,6 @@ When installed on a Raspberry Pi with a suitable USB Wi-Fi capturing adapter, th
 
 The Raspberry Pi can be connected to a mobile phone hotspot, and controlled directly with a browser pointing to the IP address of the Raspberry Pi.
 
-<img width="1080" height="2400" alt="phone screenshot" src="https://github.com/user-attachments/assets/24573072-1e6b-4bc8-8c78-5ffd2bd28441" />
-
 To connect to the web UI go to:
 
 http://IPADDRESS:5000
