@@ -258,18 +258,18 @@ def start_capture_func(adapters, filename, split_time, is_multi=False):
     local_now = utc_now.astimezone(local_tz)
     timestamp = local_now.strftime('%Y-%m-%d--%H-%M-%S')
     base_filename = re.sub(r'[^a-zA-Z0-9-_]', '', filename)[:50] or 'capture'
-    pcap_base = f'/home/spicy/{timestamp}-{base_filename}'
+    pcap_base = f'/home/pi/{timestamp}-{base_filename}'
     pcap_filename = pcap_base + '.pcap'
 
     try:
-        os.makedirs('/home/spicy', exist_ok=True)
+        os.makedirs('/home/pi', exist_ok=True)
         if not split_time:
             with open(pcap_filename, 'wb') as f:
                 f.write(b'\xa1\xb2\xc3\xd4\x00\x02\x00\x04\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xff\x00\x00\x01\x00\x00\x00')
     except (OSError, PermissionError) as e:
         return {'error': 'Cannot write capture file. Check disk space or permissions.'}, 500
 
-    cmd = ['sudo', 'screen', '-dmS', session_name, 'sudo', '-u', 'spicy', 'dumpcap']
+    cmd = ['sudo', 'screen', '-dmS', session_name, 'sudo', '-u', 'pi', 'dumpcap']
     for adapter in adapters:
         cmd.extend(['-i', adapter])
     cmd.extend(['-w', pcap_filename])
