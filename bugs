@@ -7,3 +7,5 @@ Filename prefix should be filename suffix, as it comes after the date. Also, tra
 If only one adapter is availble to capture on, then multi-adapter capture section should not appear at all.
 
 When capture button is pressed to start, it should immediately turn green, rather than waiting for the poll to update it.
+
+When viewed on narrow mobile phone screen, the 2.4 GHz channels are bunched up, and don't have 1, 6, and 11 cleanly on the left column.
