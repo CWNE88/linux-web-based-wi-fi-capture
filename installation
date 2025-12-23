@@ -21,13 +21,7 @@ python3 -m venv python
 
 source /opt/capture/python/bin/activate
 
-pip install flask
-
-pip install tzlocal
-
-pip install pytz
-
-pip install gunicorn
+pip install flask tzlocal pytz gunicorn
 
 # copy files into:
 
