@@ -43,6 +43,15 @@ If channel 40 is selected, it will capture traffic on channel 40 (20 MHz wide), 
 
 This sets how long to stay on each channel. Default is 200 ms.
 
+**Packet types**
+
+This lets you select various capture filters to avoid capture file being unnecessarily large.
+
+There are three types of frames in Wi-Fi: Management, Control, and Data. By default all frames will be captured.
+
+Within each frame type are subtypes. If only some subtypes are wanted, they can be selected here. Note that if you select all of the subtypes available individually, it's not the same as selecting all frames of that type at the top, as not all subtypes are listed. Selecting all at the top will capture all of that type.
+
+<img width="351" height="1068" alt="Screenshot from 2025-12-24 22-29-23" src="https://github.com/user-attachments/assets/7e060ef9-3222-48af-8537-805ff11eb686" />
 
 
 **Filename prefix:**
