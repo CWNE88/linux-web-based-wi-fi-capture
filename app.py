@@ -3,7 +3,6 @@ import subprocess
 import re
 from datetime import datetime
 import os
-import json
 import time
 from tzlocal import get_localzone
 import pytz
@@ -14,6 +13,15 @@ import logging
 app = Flask(__name__, static_folder='static')
 
 app.logger.disabled = True
+app.config['PROPAGATE_EXCEPTIONS'] = True
+
+log = logging.getLogger('werkzeug')
+log.disabled = True
+
+@app.after_request
+def after_request(response):
+    return response
+
 log = logging.getLogger('werkzeug')
 log.disabled = True
 
@@ -38,7 +46,7 @@ FREQ_TO_CHANNEL = {
     2467: {'channel': '12', 'bandwidth': 'HT20'},
     2472: {'channel': '13', 'bandwidth': 'HT20'},
     2484: {'channel': '14', 'bandwidth': 'HT20'},
-    
+
     # 5GHz channels
     5180: {'channel': '36', 'bandwidth': '80MHz'},
     5200: {'channel': '40', 'bandwidth': '80MHz'},
@@ -65,7 +73,7 @@ FREQ_TO_CHANNEL = {
     5785: {'channel': '157', 'bandwidth': '80MHz'},
     5805: {'channel': '161', 'bandwidth': '80MHz'},
     5825: {'channel': '165', 'bandwidth': 'HT20'},
-    
+
     # 6GHz channels
     5955: {'channel': '1', 'bandwidth': '80MHz'},
     5975: {'channel': '5', 'bandwidth': '80MHz'},
@@ -100,7 +108,7 @@ def cleanup_specific_session(session):
     try:
         if is_process_running(session):
             subprocess.run(['sudo', 'screen', '-S', session, '-X', 'quit'], capture_output=True, text=True, check=True, timeout=5)
-    except Exception as e:
+    except Exception:
         pass
 
 def get_interfaces_info():
@@ -114,20 +122,17 @@ def get_interfaces_info():
     for raw in lines:
         line = raw.strip()
 
-        # New phy
         m_phy = re.match(r"^phy#(\d+)", line)
         if m_phy:
             current_phy = f"phy#{m_phy.group(1)}"
             current_iface = None
             continue
 
-        # Match ONLY "Interface <name>" (capital I)
         m_iface = re.match(r"^Interface\s+(\S+)$", line)
         if m_iface and current_phy:
             current_iface = m_iface.group(1)
             continue
 
-        # Match "type <mode>" — only valid if tied to an Interface
         m_type = re.match(r"^type\s+(\S+)$", line)
         if m_type and current_phy and current_iface:
             interfaces.append({
@@ -135,7 +140,7 @@ def get_interfaces_info():
                 "interface": current_iface,
                 "type": m_type.group(1)
             })
-            current_iface = None  # ensure only one interface per phy
+            current_iface = None
 
     return interfaces
 
@@ -146,7 +151,7 @@ def get_adapters():
         monitor_adapters = [i['interface'] for i in interfaces if i['phy'] != 'phy#0' and i['type'] == 'monitor' and i['interface'].startswith('wlan') and i['interface'].endswith('mon')]
         all_adapters = list(set(non_monitor_adapters + monitor_adapters))
         return sorted(all_adapters)
-    except Exception as e:
+    except Exception:
         return []
 
 def is_monitor_mode(adapter):
@@ -156,7 +161,7 @@ def is_monitor_mode(adapter):
             if i['interface'] == adapter and i['type'] == 'monitor':
                 return True
         return False
-    except Exception as e:
+    except Exception:
         return False
 
 def is_process_running(session_name):
@@ -168,7 +173,7 @@ def is_process_running(session_name):
         return False
     except subprocess.TimeoutExpired:
         return False
-    except subprocess.CalledProcessError as e:
+    except subprocess.CalledProcessError:
         return False
 
 def channel_hopping_loop(adapter, frequencies, dwell_time):
@@ -176,25 +181,20 @@ def channel_hopping_loop(adapter, frequencies, dwell_time):
         for freq in frequencies:
             if not (adapter in channel_hopping_threads and channel_hopping_threads[adapter]['running']):
                 break
-                
+
             freq_info = FREQ_TO_CHANNEL.get(int(freq))
             if not freq_info:
                 continue
-                
+
             bandwidth = freq_info['bandwidth']
-            
+
             cmd = ['sudo', 'iw', 'dev', adapter, 'set', 'freq', str(freq), bandwidth]
             try:
-                result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
-                if result.returncode != 0:
-                    pass
-                else:
-                    pass
-            except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
+                subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+            except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
                 pass
-            
+
             time.sleep(dwell_time / 1000.0)
-    
 
 def compute_capture_size(pcap_filename, split_time):
     size_bytes = 0
@@ -209,13 +209,77 @@ def compute_capture_size(pcap_filename, split_time):
             size_bytes = os.path.getsize(pcap_filename)
     return round(size_bytes / (1024 * 1024), 2)
 
-def start_capture_func(adapters, filename, split_time, is_multi=False):
+# ... (all previous code unchanged until build_capture_filter)
+
+def build_capture_filter(selections):
+    filters = []
+
+    # Management
+    if selections.get('mgt_all', False):
+        filters.append('type mgt')
+    elif selections.get('mgt_specific', False):
+        mgt_sub = []
+        if selections.get('beacon', False): mgt_sub.append('subtype beacon')
+        if selections.get('probe_req', False): mgt_sub.append('subtype probe-req')
+        if selections.get('probe_resp', False): mgt_sub.append('subtype probe-resp')
+        if selections.get('auth', False): mgt_sub.append('subtype auth')
+        if selections.get('assoc_req', False): mgt_sub.append('subtype assoc-req')
+        if selections.get('assoc_resp', False): mgt_sub.append('subtype assoc-resp')
+        if selections.get('reassoc_req', False): mgt_sub.append('subtype reassoc-req')
+        if selections.get('reassoc_resp', False): mgt_sub.append('subtype reassoc-resp')
+        if selections.get('disassoc', False): mgt_sub.append('subtype disassoc')
+        if selections.get('deauth', False): mgt_sub.append('subtype deauth')
+        if selections.get('atim', False): mgt_sub.append('subtype atim')
+        if mgt_sub:
+            filters.extend(mgt_sub)
+    # if mgt_none → add nothing for management
+
+    # Control
+    if selections.get('ctl_all', False):
+        filters.append('type ctl')
+    elif selections.get('ctl_specific', False):
+        ctl_sub = []
+        if selections.get('rts', False): ctl_sub.append('subtype rts')
+        if selections.get('cts', False): ctl_sub.append('subtype cts')
+        if selections.get('ack', False): ctl_sub.append('subtype ack')
+        if selections.get('ps_poll', False): ctl_sub.append('subtype ps-poll')
+        if selections.get('cf_end', False): ctl_sub.append('subtype cf-end')
+        if selections.get('cf_end_ack', False): ctl_sub.append('subtype cf-end-ack')
+        if ctl_sub:
+            filters.extend(ctl_sub)
+
+    # Data
+    if selections.get('data_all', False):
+        filters.append('type data')
+    elif selections.get('data_specific', False):
+        data_sub = []
+        if selections.get('eapol', False): data_sub.append('ether proto 0x888e')
+        if selections.get('data_cf_ack', False): data_sub.append('subtype data-cf-ack')
+        if selections.get('data_cf_poll', False): data_sub.append('subtype data-cf-poll')
+        if selections.get('data_cf_ack_poll', False): data_sub.append('subtype data-cf-ack-poll')
+        if selections.get('null', False): data_sub.append('subtype null')
+        if selections.get('cf_ack', False): data_sub.append('subtype cf-ack')
+        if selections.get('cf_poll', False): data_sub.append('subtype cf-poll')
+        if selections.get('cf_ack_poll', False): data_sub.append('subtype cf-ack-poll')
+        if selections.get('qos_data', False): data_sub.append('subtype qos-data')
+        if selections.get('qos_data_cf_ack', False): data_sub.append('subtype qos-data-cf-ack')
+        if selections.get('qos_data_cf_poll', False): data_sub.append('subtype qos-data-cf-poll')
+        if selections.get('qos_data_cf_ack_poll', False): data_sub.append('subtype qos-data-cf-ack-poll')
+        if selections.get('qos_null', False): data_sub.append('subtype qos')
+        if selections.get('qos_cf_poll', False): data_sub.append('subtype qos-cf-poll')
+        if selections.get('qos_cf_ack_poll', False): data_sub.append('subtype qos-cf-ack-poll')
+        if data_sub:
+            filters.extend(data_sub)
+
+    return ' or '.join(filters) if filters else ''
+
+
+def start_capture_func(adapters, filename, split_time, is_multi=False, capture_filter=''):
     if not adapters:
         return {'error': 'No adapters provided'}, 400
 
     if is_multi:
         if multi_state.get('busy', False):
-            # Stop existing multi
             cleanup_specific_session('dumpcap_multi')
             pcap_filename = multi_state.get('pcap_file')
             st = multi_state.get('split_time', 0)
@@ -228,13 +292,13 @@ def start_capture_func(adapters, filename, split_time, is_multi=False):
                 'adapters': [],
                 'pcap_file': None,
                 'split_time': 0,
-                'filesize': 0.0
+                'filesize': 0.0,
+                'capture_filter': ''
             })
     else:
         adapter = adapters[0]
         state = adapter_states.get(adapter, {})
         if state.get('dumpcap_busy', False):
-            # Stop existing single
             session = f'dumpcap_{adapter}'
             cleanup_specific_session(session)
             pcap_filename = state.get('pcap_file')
@@ -247,7 +311,8 @@ def start_capture_func(adapters, filename, split_time, is_multi=False):
                 'dumpcap_busy': False,
                 'pcap_file': None,
                 'split_time': 0,
-                'filesize': 0.0
+                'filesize': 0.0,
+                'capture_filter': ''
             })
 
     session_name = 'dumpcap_multi' if is_multi else f'dumpcap_{adapters[0]}'
@@ -257,24 +322,32 @@ def start_capture_func(adapters, filename, split_time, is_multi=False):
     utc_now = datetime.now(pytz.UTC)
     local_now = utc_now.astimezone(local_tz)
     timestamp = local_now.strftime('%Y-%m-%d--%H-%M-%S')
-    base_filename = re.sub(r'[^a-zA-Z0-9-_]', '', filename)[:50] or 'capture'
-    pcap_base = f'/home/pi/{timestamp}-{base_filename}'
+    base_filename = re.sub(r'[^a-zA-Z0-9-_]', '', filename)[:50]
+    if not base_filename:
+        base_filename = 'capture'
+    pcap_base = f'/home/spicy/{timestamp}_{base_filename}'
     pcap_filename = pcap_base + '.pcap'
 
     try:
-        os.makedirs('/home/pi', exist_ok=True)
+        os.makedirs('/home/spicy', exist_ok=True)
         if not split_time:
             with open(pcap_filename, 'wb') as f:
                 f.write(b'\xa1\xb2\xc3\xd4\x00\x02\x00\x04\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xff\x00\x00\x01\x00\x00\x00')
-    except (OSError, PermissionError) as e:
+    except (OSError, PermissionError):
         return {'error': 'Cannot write capture file. Check disk space or permissions.'}, 500
 
-    cmd = ['sudo', 'screen', '-dmS', session_name, 'sudo', '-u', 'pi', 'dumpcap']
+    cmd = ['sudo', 'screen', '-dmS', session_name, 'sudo', '-u', 'spicy', 'dumpcap']
     for adapter in adapters:
         cmd.extend(['-i', adapter])
+        if capture_filter:
+            cmd.extend(['-f', capture_filter])
     cmd.extend(['-w', pcap_filename])
     if split_time:
         cmd.extend(['-b', f'duration:{split_time}'])
+
+
+
+
 
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=10)
@@ -287,7 +360,8 @@ def start_capture_func(adapters, filename, split_time, is_multi=False):
                 'adapters': adapters,
                 'pcap_file': pcap_filename,
                 'split_time': int(split_time) if split_time else 0,
-                'filesize': 0.0
+                'filesize': 0.0,
+                'capture_filter': capture_filter
             })
         else:
             adapter = adapters[0]
@@ -296,7 +370,8 @@ def start_capture_func(adapters, filename, split_time, is_multi=False):
                 'pcap_file': pcap_filename,
                 'split_time': int(split_time) if split_time else 0,
                 'filesize': 0.0,
-                'status': 'Capturing'
+                'status': 'Capturing',
+                'capture_filter': capture_filter
             })
         return {
             'message': f'Capturing to {pcap_filename}' + (' (split files)' if split_time else ''),
@@ -306,7 +381,7 @@ def start_capture_func(adapters, filename, split_time, is_multi=False):
     except subprocess.TimeoutExpired:
         return {'error': 'Operation timed out'}, 500
     except subprocess.CalledProcessError as e:
-        return {'error': 'Failed to start capture. Check if adapters are free.'}, 500
+        return {'error': f'Failed to start capture: {e.stderr}'}, 500
 
 @app.route('/')
 def index():
@@ -319,9 +394,7 @@ def adapters():
         interfaces = get_interfaces_info()
         current_phies = {i['phy'] for i in interfaces if i['phy'] != 'phy#0'}
 
-        # Only reconfigure if the physical adapters have changed
         if current_phies != previous_phies:
-            # Stop any ongoing captures
             for adapter in list(adapter_states.keys()):
                 state = adapter_states.get(adapter, {})
                 if state.get('dumpcap_busy', False):
@@ -337,7 +410,8 @@ def adapters():
                         'dumpcap_busy': False,
                         'pcap_file': None,
                         'split_time': 0,
-                        'filesize': 0.0
+                        'filesize': 0.0,
+                        'capture_filter': ''
                     })
             if multi_state.get('busy', False):
                 cleanup_specific_session('dumpcap_multi')
@@ -352,10 +426,10 @@ def adapters():
                     'adapters': [],
                     'pcap_file': None,
                     'split_time': 0,
-                    'filesize': 0.0
+                    'filesize': 0.0,
+                    'capture_filter': ''
                 })
 
-            # Stop channel hopping for all adapters
             for adapter in list(channel_hopping_threads.keys()):
                 channel_hopping_threads[adapter]['running'] = False
                 if channel_hopping_threads[adapter]['thread']:
@@ -368,7 +442,6 @@ def adapters():
                         'status': 'Enabled' if is_monitor_mode(adapter) else 'Disabled'
                     })
 
-            # Disable all monitor mode adapters
             mon_adapters = [i['interface'] for i in interfaces if i['phy'] != 'phy#0' and i['type'] == 'monitor' and i['interface'].startswith('wlan') and i['interface'].endswith('mon')]
             for ad_mon in mon_adapters:
                 try:
@@ -378,7 +451,6 @@ def adapters():
                 except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
                     pass
 
-            # Refresh interfaces after stopping monitor mode
             interfaces = get_interfaces_info()
             non_mon = [i['interface'] for i in interfaces if i['phy'] != 'phy#0' and i['type'] == 'managed' and i['interface'].startswith('wlan') and not i['interface'].endswith('mon') and i['interface'] != 'wlan0']
             for ad in non_mon:
@@ -391,22 +463,29 @@ def adapters():
 
         adapters_list = get_adapters()
         adapter_info = []
+        monitor_adapters = []
+
         for adapter in adapters_list:
             state = adapter_states.get(adapter, {})
             is_monitor = is_monitor_mode(adapter)
+            if is_monitor:
+                monitor_adapters.append(adapter)
+
             hopping_active = adapter in channel_hopping_threads and channel_hopping_threads[adapter]['running']
             dumpcap_busy = state.get('dumpcap_busy', False)
             status = 'Disabled'
             if is_monitor:
                 status = 'Enabled'
-                if hopping_active:
-                    status = 'Monitoring'
-                if dumpcap_busy:
-                    status = 'Capturing'
+            if hopping_active:
+                status = 'Monitoring'
+            if dumpcap_busy:
+                status = 'Capturing'
+
             channels = [FREQ_TO_CHANNEL.get(int(freq), {}).get('channel', 'Unknown') for freq in state.get('frequencies', [])]
+
             adapter_states[adapter] = {
                 'frequencies': state.get('frequencies', []),
-                'dwell_time': state.get('dwell_time', 500),
+                'dwell_time': state.get('dwell_time') or state.get('last_dwell_time', 200),
                 'hopping_active': hopping_active,
                 'dumpcap_busy': dumpcap_busy,
                 'pcap_file': state.get('pcap_file', None),
@@ -415,8 +494,10 @@ def adapters():
                 'last_pcap_file': state.get('last_pcap_file', None),
                 'last_split_time': state.get('last_split_time', 0),
                 'last_filesize': state.get('last_filesize', 0.0),
-                'status': status
+                'status': status,
+                'capture_filter': state.get('capture_filter', '')
             }
+
             adapter_info.append({
                 'name': adapter,
                 'monitor': is_monitor,
@@ -432,19 +513,27 @@ def adapters():
                 'last_split_time': adapter_states[adapter]['last_split_time'],
                 'last_filesize': adapter_states[adapter]['last_filesize'],
                 'status': status,
-                'is_monitor': is_monitor
+                'is_monitor': is_monitor,
+                'capture_filter': adapter_states[adapter]['capture_filter']
             })
-        return jsonify({'adapters': adapter_info, 'multi': multi_state})
+
+        multi_possible = len(monitor_adapters) >= 2
+
+        return jsonify({
+            'adapters': adapter_info,
+            'multi': multi_state,
+            'multi_possible': multi_possible
+        })
     except Exception:
-        return jsonify({'adapters': [], 'multi': {}})
+        return jsonify({'adapters': [], 'multi': {}, 'multi_possible': False})
 
 @app.route('/shutdown', methods=['POST'])
 def shutdown():
     try:
         subprocess.run(['sudo', 'poweroff'], check=True)
         return jsonify({'status': 'success'})
-    except subprocess.CalledProcessError as e:
-        return jsonify({'status': 'error', 'message': str(e)}), 500
+    except subprocess.CalledProcessError:
+        return jsonify({'status': 'error', 'message': 'Failed'}), 500
 
 @app.route('/monitor_on', methods=['POST'])
 def monitor_on():
@@ -467,7 +556,8 @@ def monitor_on():
                 'dumpcap_busy': False,
                 'pcap_file': None,
                 'split_time': 0,
-                'filesize': 0.0
+                'filesize': 0.0,
+                'capture_filter': ''
             })
         if multi_state.get('busy', False) and adapter in multi_state.get('adapters', []):
             cleanup_specific_session('dumpcap_multi')
@@ -482,14 +572,15 @@ def monitor_on():
                 'adapters': [],
                 'pcap_file': None,
                 'split_time': 0,
-                'filesize': 0.0
+                'filesize': 0.0,
+                'capture_filter': ''
             })
         result = subprocess.run(['sudo', 'airmon-ng', 'start', adapter], capture_output=True, text=True, check=True, timeout=10)
         adapter_states[adapter] = adapter_states.get(adapter, {})
         return jsonify({'message': f'Adapter {adapter} enabled'})
     except subprocess.TimeoutExpired:
         return jsonify({'error': 'Operation timed out'}), 500
-    except subprocess.CalledProcessError as e:
+    except subprocess.CalledProcessError:
         return jsonify({'error': 'Failed to enable adapter. Check compatibility.'}), 500
 
 @app.route('/start_monitoring', methods=['POST'])
@@ -536,11 +627,8 @@ def start_monitoring():
         bandwidth = FREQ_TO_CHANNEL[int(freq)]['bandwidth']
         cmd = ['sudo', 'iw', 'dev', adapter, 'set', 'freq', freq, bandwidth]
         try:
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
-            if result.returncode != 0:
-                return jsonify({'error': 'Failed to set frequency'}), 500
-            else:
-                channel_hopping_threads[adapter] = {'running': True, 'thread': None}
+            subprocess.run(cmd, capture_output=True, text=True, timeout=10, check=True)
+            channel_hopping_threads[adapter] = {'running': True, 'thread': None}
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
             return jsonify({'error': 'Error setting frequency'}), 500
     else:
@@ -558,7 +646,7 @@ def start_monitoring():
         'hopping_active': True,
         'status': 'Monitoring'
     })
-    
+
     return jsonify({
         'message': f'Monitoring frequencies on {adapter}',
         'channels': valid_channels
@@ -570,10 +658,11 @@ def start_capture():
     adapter = data.get('adapter')
     filename = data.get('filename', '').strip()
     split_time = data.get('split_time')
+    capture_filter = data.get('capture_filter', '')
 
     if not adapter or not adapter.endswith('mon'):
         return jsonify({'error': 'Adapter must be enabled'}), 400
-        
+
     if split_time:
         try:
             split_time = int(split_time)
@@ -581,7 +670,7 @@ def start_capture():
             return jsonify({'error': 'Invalid split time'}), 400
 
     adapters = [adapter]
-    result = start_capture_func(adapters, filename, split_time, is_multi=False)
+    result = start_capture_func(adapters, filename, split_time, is_multi=False, capture_filter=capture_filter)
     if isinstance(result, tuple) and 'error' in result[0]:
         return jsonify(result[0]), result[1]
     return jsonify(result)
@@ -592,6 +681,7 @@ def start_dumpcap():
     adapters = data.get('adapters', [])
     filename = data.get('filename', '').strip()
     split_time = data.get('split_time')
+    capture_filter = data.get('capture_filter', '')
 
     if not adapters or not isinstance(adapters, list) or not all(adapter.endswith('mon') for adapter in adapters):
         return jsonify({'error': 'Select at least one enabled adapter'}), 400
@@ -605,7 +695,7 @@ def start_dumpcap():
         except ValueError:
             return jsonify({'error': 'Invalid split time'}), 400
 
-    result = start_capture_func(adapters, filename, split_time, is_multi=True)
+    result = start_capture_func(adapters, filename, split_time, is_multi=True, capture_filter=capture_filter)
     if isinstance(result, tuple) and 'error' in result[0]:
         return jsonify(result[0]), result[1]
     return jsonify(result)
@@ -635,6 +725,7 @@ def stop_capture():
             'pcap_file': None,
             'split_time': 0,
             'filesize': 0.0,
+            'capture_filter': '',
             'status': 'Monitoring' if adapter_states[adapter].get('hopping_active', False) else ('Enabled' if is_monitor_mode(adapter) else 'Disabled')
         })
         return jsonify({'message': f'Stopped capture on {adapter}'})
@@ -658,7 +749,8 @@ def stop_dumpcap():
             'adapters': [],
             'pcap_file': None,
             'split_time': 0,
-            'filesize': 0.0
+            'filesize': 0.0,
+            'capture_filter': ''
         })
         return jsonify({'message': 'Stopped multi capture'})
     except Exception:
@@ -680,11 +772,12 @@ def stop_monitoring():
             if channel_hopping_threads[adapter]['thread']:
                 channel_hopping_threads[adapter]['thread'].join(timeout=5)
             del channel_hopping_threads[adapter]
-        
+
         adapter_states[adapter].update({
             'hopping_active': False,
             'frequencies': [],
-            'status': 'Enabled'
+            'status': 'Enabled',
+            'last_dwell_time': adapter_states[adapter].get('dwell_time', 200)
         })
         return jsonify({'message': f'Stopped monitoring on {adapter}'})
     except Exception:
@@ -740,8 +833,8 @@ def download(adapter):
         latest = files[-1]
     else:
         latest = pcap_base
-        if not os.path.exists(latest):
-            return jsonify({'error': 'Capture file not found'}), 404
+    if not os.path.exists(latest):
+        return jsonify({'error': 'Capture file not found'}), 404
 
     try:
         return send_file(latest, as_attachment=True)
