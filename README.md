@@ -43,7 +43,7 @@ If channel 40 is selected, it will capture traffic on channel 40 (20 MHz wide), 
 
 This sets how long to stay on each channel. Default is 200 ms.
 
-**Packet types**
+**Packet types:**
 
 This lets you select various capture filters to avoid capture file being unnecessarily large.
 
