@@ -21,8 +21,6 @@
         .btn-outline-secondary { background: white; color: #6c757d; border: 1px solid #6c757d; text-align: center; width: 100%; }
         .capturing { background: #28a745 !important; }
         input[type="text"] { width: 100%; padding: 0.375rem; border: 1px solid #ccc; border-radius: 0.25rem; }
-        .channels-btn-row { text-align: center; margin-bottom: 0.5rem; width: 100%; }
-        #adapters-container { max-width: 400px; margin: 0 auto; }
         .modal { display: flex; align-items: center; justify-content: center; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; }
         .modal-dialog { max-width: 90%; margin: auto; background: white; border-radius: 0.375rem; overflow: hidden; max-height: 80vh; overflow-y: auto; }
         .modal-header { background: #e9ecef; padding: 1rem; display: flex; justify-content: space-between; align-items: center; }
@@ -40,20 +38,31 @@
         .dwell-btn.active { background: #0d6efd; color: white; }
         .modal-footer { padding: 1rem; border-top: 1px solid #dee2e6; display: flex; justify-content: center; }
         .notification { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); background: #dc3545; color: #fff; padding: 10px 15px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); z-index: 1000; font-size: 1rem; max-width: 90%; text-align: center; }
+        .packet-section { margin-bottom: 1.5rem; border-bottom: 1px solid #eee; padding-bottom: 1rem; }
+        .packet-option { margin-bottom: 0.5rem; }
+        .packet-specific { margin-left: 2rem; opacity: 0.5; transition: opacity 0.3s; }
+        .packet-specific.enabled { opacity: 1; }
+        .note { font-size: 0.9em; color: #856404; background: #fff3cd; padding: 0.75rem; border-radius: 0.25rem; margin-top: 1rem; }
     </style>
 </head>
 <body>
     <div id="adapters-container" style="max-width: 400px; margin: 0 auto;"></div>
 
-    <div class="card" id="multi-card" style="max-width: 400px; margin: 0 auto;">
+    <div class="card" id="multi-card" style="max-width: 400px; margin: 0 auto; display: none;">
         <div class="card-header">Multi-adapter capture</div>
         <div class="card-body">
             <div id="multi-adapters-select">
                 <label>Selected adapters:</label><br>
             </div>
             <div class="row">
-                <div class="label-col">Filename prefix:</div>
-                <div class="value-col"><input type="text" id="multi-filename" value="multi_capture_"></div>
+                <div class="label-col">Filename sufix:</div>
+                <div class="value-col"><input type="text" id="multi-filename" value="multi_capture"></div>
+            </div>
+            <div class="row">
+                <div class="label-col">Packet types:</div>
+                <div class="value-col">
+                    <button id="multi-packet-btn" class="btn btn-outline-secondary">Select packet types</button>
+                </div>
             </div>
             <div class="row">
                 <div class="label-col">File split:</div>
@@ -92,10 +101,9 @@
         <div class="modal-dialog">
             <div class="modal-header">
                 <h5 class="modal-title">Select channels</h5>
-                <button class="btn-close" onclick="closeModal()">&times;</button>
+                <button class="btn-close" onclick="closeModal()">×</button>
             </div>
             <div class="modal-body">
-                <!-- 2.4GHz Section -->
                 <div class="band-section">
                     <div class="band-heading">2.4 GHz</div>
                     <div class="checkbox-row">
@@ -122,7 +130,6 @@
                     <button class="all-btn" onclick="selectAll('24')">All</button>
                 </div>
 
-                <!-- 5GHz Section -->
                 <div class="band-section">
                     <div class="band-heading">5 GHz</div>
                     <div class="checkbox-row">
@@ -163,14 +170,10 @@
                     </div>
                     <div class="checkbox-row">
                         <div class="form-check"><input class="form-check-input" type="checkbox" id="ch5-165"><label for="ch5-165">165</label></div>
-                        <div class="form-check"></div>
-                        <div class="form-check"></div>
-                        <div class="form-check"></div>
                     </div>
                     <button class="all-btn" onclick="selectAll('5')">All</button>
                 </div>
 
-                <!-- 6GHz Section -->
                 <div class="band-section">
                     <div class="band-heading">6 GHz</div>
                     <div class="checkbox-row">
@@ -212,24 +215,122 @@
                     <button class="all-btn" onclick="selectAll('6')">All</button>
                 </div>
 
-                <!-- Dwell Time Section -->
                 <div class="band-section">
                     <div class="band-heading">Dwell time</div>
                     <div class="dwell-row">
-                        <button class="dwell-btn active" data-dwell="200ms">200 ms</button>
-                        <button class="dwell-btn" data-dwell="500ms">500 ms</button>
-                        <button class="dwell-btn" data-dwell="1s">1 sec</button>
-                        <button class="dwell-btn" data-dwell="5s">5 sec</button>
+                        <button class="dwell-btn active" data-dwell="200 ms">200 ms</button>
+                        <button class="dwell-btn" data-dwell="500 ms">500 ms</button>
+                        <button class="dwell-btn" data-dwell="1 sec">1 sec</button>
+                        <button class="dwell-btn" data-dwell="5 sec">5 sec</button>
                     </div>
                     <div class="dwell-row" style="margin-top: 0.25rem;">
-                        <button class="dwell-btn" data-dwell="10s">10 sec</button>
-                        <button class="dwell-btn" data-dwell="1m">1 min</button>
-                        <button class="dwell-btn" data-dwell="5m">5 min</button>
+                        <button class="dwell-btn" data-dwell="10 sec">10 sec</button>
+                        <button class="dwell-btn" data-dwell="1 min">1 min</button>
+                        <button class="dwell-btn" data-dwell="5 min">5 min</button>
                     </div>
                 </div>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-primary" onclick="saveChannels()">Set</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Packet Types Modal -->
+    <div id="packetModal" class="modal" style="display: none;">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <h5 class="modal-title">Packet types</h5>
+                <button class="btn-close" onclick="closePacketModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="packet-section">
+                    <div class="packet-option">
+                        <input type="radio" name="mgt_group" id="mgt_all">
+                        <label for="mgt_all">All management frames</label>
+                    </div>
+                    <div class="packet-option">
+                        <input type="radio" name="mgt_group" id="mgt_none">
+                        <label for="mgt_none">No management frames</label>
+                    </div>
+                    <div class="packet-option">
+                        <input type="radio" name="mgt_group" id="mgt_specific_radio">
+                        <label for="mgt_specific_radio">Specific management subtypes:</label>
+                    </div>
+                    <div class="packet-specific" id="mgt_specific">
+                        <input type="checkbox" id="mgt_beacon"><label for="mgt_beacon"> Beacon</label><br>
+                        <input type="checkbox" id="mgt_probe_req"><label for="mgt_probe_req"> Probe request</label><br>
+                        <input type="checkbox" id="mgt_probe_resp"><label for="mgt_probe_resp"> Probe response</label><br>
+                        <input type="checkbox" id="mgt_auth"><label for="mgt_auth"> Authentication</label><br>
+                        <input type="checkbox" id="mgt_assoc_req"><label for="mgt_assoc_req"> Association request</label><br>
+                        <input type="checkbox" id="mgt_assoc_resp"><label for="mgt_assoc_resp"> Association response</label><br>
+                        <input type="checkbox" id="mgt_reassoc_req"><label for="mgt_reassoc_req"> Reassociation request</label><br>
+                        <input type="checkbox" id="mgt_reassoc_resp"><label for="mgt_reassoc_resp"> Reassociation response</label><br>
+                        <input type="checkbox" id="mgt_disassoc"><label for="mgt_disassoc"> Disassociation</label><br>
+                        <input type="checkbox" id="mgt_deauth"><label for="mgt_deauth"> Deauthentication</label><br>
+                        <input type="checkbox" id="mgt_atim"><label for="mgt_atim"> ATIM</label>
+                    </div>
+                </div>
+
+                <div class="packet-section">
+                    <div class="packet-option">
+                        <input type="radio" name="ctl_group" id="ctl_all">
+                        <label for="ctl_all">All control frames</label>
+                    </div>
+                    <div class="packet-option">
+                        <input type="radio" name="ctl_group" id="ctl_none">
+                        <label for="ctl_none">No control frames</label>
+                    </div>
+                    <div class="packet-option">
+                        <input type="radio" name="ctl_group" id="ctl_specific_radio">
+                        <label for="ctl_specific_radio">Select specific control subtypes:</label>
+                    </div>
+                    <div class="packet-specific" id="ctl_specific">
+                        <input type="checkbox" id="ctl_rts"><label for="ctl_rts"> RTS</label><br>
+                        <input type="checkbox" id="ctl_cts"><label for="ctl_cts"> CTS</label><br>
+                        <input type="checkbox" id="ctl_ack"><label for="ctl_ack"> ACK</label><br>
+                        <input type="checkbox" id="ctl_ps_poll"><label for="ctl_ps_poll"> PS-Poll</label><br>
+                        <input type="checkbox" id="ctl_cf_end"><label for="ctl_cf_end"> CF-End</label><br>
+                        <input type="checkbox" id="ctl_cf_end_ack"><label for="ctl_cf_end_ack"> CF-End+ACK</label>
+                    </div>
+                </div>
+
+                <div class="packet-section">
+                    <div class="packet-option">
+                        <input type="radio" name="data_group" id="data_all">
+                        <label for="data_all">All data frames</label>
+                    </div>
+                    <div class="packet-option">
+                        <input type="radio" name="data_group" id="data_none">
+                        <label for="data_none">No data frames</label>
+                    </div>
+                    <div class="packet-option">
+                        <input type="radio" name="data_group" id="data_specific_radio">
+                        <label for="data_specific_radio">Select specific data subtypes:</label>
+                    </div>
+                    <div class="packet-specific" id="data_specific">
+                        <input type="checkbox" id="data_eapol"><label for="data_eapol"> EAPOL</label><br>
+                        <input type="checkbox" id="data_data_cf_ack"><label for="data_data_cf_ack"> Data + CF-Ack</label><br>
+                        <input type="checkbox" id="data_data_cf_poll"><label for="data_data_cf_poll"> Data + CF-Poll</label><br>
+                        <input type="checkbox" id="data_data_cf_ack_poll"><label for="data_data_cf_ack_poll"> Data + CF-Ack + CF-Poll</label><br>
+                        <input type="checkbox" id="data_null"><label for="data_null"> Null (No data)</label><br>
+                        <input type="checkbox" id="data_cf_ack"><label for="data_cf_ack"> CF-Ack (No data)</label><br>
+                        <input type="checkbox" id="data_cf_poll"><label for="data_cf_poll"> CF-Poll (No data)</label><br>
+                        <input type="checkbox" id="data_cf_ack_poll"><label for="data_cf_ack_poll"> CF-Ack + CF-Poll (No data)</label><br>
+                        <input type="checkbox" id="data_qos_data"><label for="data_qos_data"> QoS Data</label><br>
+                        <input type="checkbox" id="data_qos_data_cf_ack"><label for="data_qos_data_cf_ack"> QoS Data + CF-Ack</label><br>
+                        <input type="checkbox" id="data_qos_data_cf_poll"><label for="data_qos_data_cf_poll"> QoS Data + CF-Poll</label><br>
+                        <input type="checkbox" id="data_qos_data_cf_ack_poll"><label for="data_qos_data_cf_ack_poll"> QoS Data + CF-Ack + CF-Poll</label><br>
+                        <input type="checkbox" id="data_qos_null"><label for="data_qos_null"> QoS Null</label><br>
+                        <input type="checkbox" id="data_qos_cf_poll"><label for="data_qos_cf_poll"> QoS CF-Poll</label><br>
+                        <input type="checkbox" id="data_qos_cf_ack_poll"><label for="data_qos_cf_ack_poll"> QoS CF-Ack + CF-Poll</label>
+                    </div>
+                </div>
+
+               
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="savePacketTypes()">Set</button>
             </div>
         </div>
     </div>
@@ -252,42 +353,22 @@
         let currentCardBody = null;
         let previousChannelCount = 0;
         let selectedAdapters = [];
+        let currentPacketSelections = {};
+
         const channelToFreq = {
-            '2.4': {
-                '1': 2412, '2': 2417, '3': 2422, '4': 2427, '5': 2432,
-                '6': 2437, '7': 2442, '8': 2447, '9': 2452, '10': 2457,
-                '11': 2462, '12': 2467, '13': 2472, '14': 2484
-            },
-            '5': {
-                '36': 5180, '40': 5200, '44': 5220, '48': 5240, '52': 5260,
-                '56': 5280, '60': 5300, '64': 5320, '100': 5500, '104': 5520,
-                '108': 5540, '112': 5560, '116': 5580, '120': 5600, '124': 5620,
-                '128': 5640, '132': 5660, '136': 5680, '140': 5700, '144': 5720,
-                '149': 5745, '153': 5765, '157': 5785, '161': 5805, '165': 5825
-            },
-            '6': {
-                '1': 5955, '5': 5975, '9': 5995, '13': 6015, '17': 6035,
-                '21': 6055, '25': 6075, '29': 6095, '33': 6115, '37': 6135,
-                '41': 6155, '45': 6175, '49': 6195, '53': 6215, '57': 6235,
-                '61': 6255, '65': 6275, '69': 6295, '73': 6315, '77': 6335,
-                '81': 6355, '85': 6375, '89': 6395, '93': 6415
-            }
+            '2.4': { '1': 2412, '2': 2417, '3': 2422, '4': 2427, '5': 2432, '6': 2437, '7': 2442, '8': 2447, '9': 2452, '10': 2457, '11': 2462, '12': 2467, '13': 2472, '14': 2484 },
+            '5': { '36': 5180, '40': 5200, '44': 5220, '48': 5240, '52': 5260, '56': 5280, '60': 5300, '64': 5320, '100': 5500, '104': 5520, '108': 5540, '112': 5560, '116': 5580, '120': 5600, '124': 5620, '128': 5640, '132': 5660, '136': 5680, '140': 5700, '144': 5720, '149': 5745, '153': 5765, '157': 5785, '161': 5805, '165': 5825 },
+            '6': { '1': 5955, '5': 5975, '9': 5995, '13': 6015, '17': 6035, '21': 6055, '25': 6075, '29': 6095, '33': 6115, '37': 6135, '41': 6155, '45': 6175, '49': 6195, '53': 6215, '57': 6235, '61': 6255, '65': 6275, '69': 6295, '73': 6315, '77': 6335, '81': 6355, '85': 6375, '89': 6395, '93': 6415 }
         };
+
         const freqToChannel = {};
         Object.keys(channelToFreq['2.4']).forEach(ch => freqToChannel[channelToFreq['2.4'][ch]] = { band: '2.4', channel: ch });
         Object.keys(channelToFreq['5']).forEach(ch => freqToChannel[channelToFreq['5'][ch]] = { band: '5', channel: ch });
         Object.keys(channelToFreq['6']).forEach(ch => freqToChannel[channelToFreq['6'][ch]] = { band: '6', channel: ch });
-        const dwellMap = {
-            '200ms': 200, '500ms': 500, '1s': 1000, '5s': 5000,
-            '10s': 10000, '1m': 60000, '5m': 300000
-        };
-        const dwellDisplayMap = {
-            200: '200 ms', 500: '500 ms', 1000: '1 sec', 5000: '5 sec',
-            10000: '10 sec', 60000: '1 min', 300000: '5 min'
-        };
-        const splitMap = {
-            'None': 0, '1 min': 60, '5 min': 300, '10 min': 600, '1 hr': 3600, '1 day': 86400
-        };
+
+        const dwellMap = { '200 ms': 200, '500 ms': 500, '1 sec': 1000, '5 sec': 5000, '10 sec': 10000, '1 min': 60000, '5 min': 300000 };
+        const dwellDisplayMap = { 200: '200 ms', 500: '500 ms', 1000: '1 sec', 5000: '5 sec', 10000: '10 sec', 60000: '1 min', 300000: '5 min' };
+        const splitMap = { 'None': 0, '1 min': 60, '5 min': 300, '10 min': 600, '1 hr': 3600, '1 day': 86400 };
 
         function showNotification(message) {
             const notification = document.createElement('div');
@@ -306,13 +387,12 @@
                 .then(data => {
                     const container = document.getElementById('adapters-container');
                     container.innerHTML = '';
-
                     data.adapters.forEach(ad => {
                         const card = createAdapterCard(ad);
                         container.appendChild(card);
                     });
-
                     updateMultiCard(data.multi, data.adapters);
+                    document.getElementById('multi-card').style.display = data.multi_possible ? 'block' : 'none';
                 })
                 .catch(error => console.error('Error fetching adapters:', error));
         }
@@ -339,13 +419,14 @@
             const multiDl = document.getElementById('multi-download');
             const fileNameCol = document.getElementById('multi-file-name').querySelector('.value-col');
             const multiSize = document.getElementById('multi-size');
+            
             if (multiActive) {
                 selectedAdapters = multi.adapters || [];
                 fileNameCol.textContent = (multi.pcap_file ? multi.pcap_file.split('/').pop() : 'None') + (multi.split_time > 0 ? ' (split)' : '');
                 multiSize.textContent = `${multi.filesize || 0} MB`;
                 multiDl.disabled = false;
                 multiDl.onclick = () => window.location.href = '/download/multi';
-                let activeSplit = multi.split_time === 0 ? 'None' : multi.split_time === 60 ? '1 min' : multi.split_time === 300 ? '5 min' : multi.split_time === 600 ? '10 min' : multi.split_time === 3600 ? '1 hr' : '1 day';
+                let activeSplit = multi.split_time === 0 ? 'None' : Object.entries(splitMap).find(([k, v]) => v === multi.split_time)[0] || 'None';
                 document.getElementById('multi-split').querySelectorAll('.file-split-btn').forEach(b => b.classList.remove('active'));
                 const activeBtn = document.querySelector(`#multi-split .file-split-btn[data-split="${activeSplit}"]`);
                 if (activeBtn) activeBtn.classList.add('active');
@@ -361,6 +442,17 @@
                     multiDl.disabled = true;
                 }
             }
+
+            // Fix for multi packet filter: use the real backend filter when opening modal
+            const packetBtn = document.getElementById('multi-packet-btn');
+            if (packetBtn) {
+                packetBtn.disabled = multiActive;
+                packetBtn.onclick = () => {
+                    const currentFilter = multi.capture_filter || '';
+                    openPacketModal('multi', null, currentFilter);
+                };
+            }
+
             multiSelect.querySelectorAll('input').forEach(inp => inp.disabled = multiActive);
             document.getElementById('multi-filename').disabled = multiActive;
             document.getElementById('multi-split').querySelectorAll('button').forEach(b => b.disabled = multiActive);
@@ -407,11 +499,9 @@
             card.appendChild(header);
             const body = document.createElement('div');
             body.className = 'card-body';
-            body.dataset.frequencies = ad.frequencies;
-            body.dataset.channels = ad.channels;
             body.dataset.adapter = ad.name;
+            body.dataset.dwell_time = ad.dwell_time;
 
-            // Channels button row
             const channelsBtnRow = createRow('Channels:', '');
             const channelsValue = channelsBtnRow.querySelector('.value-col');
             const selectBtn = document.createElement('button');
@@ -421,55 +511,46 @@
             channelsValue.appendChild(selectBtn);
             body.appendChild(channelsBtnRow);
 
-            // 2.4GHz row
-            const ch24 = ad.frequencies
-                .filter(f => parseInt(f) < 3000)
-                .map(f => freqToChannel[parseInt(f)]?.channel || 'Unknown')
-                .filter(ch => ch !== 'Unknown')
-                .sort((a, b) => parseInt(a) - parseInt(b));
+            const ch24 = ad.frequencies.filter(f => parseInt(f) < 3000).map(f => freqToChannel[parseInt(f)]?.channel || 'Unknown').filter(ch => ch !== 'Unknown').sort((a,b) => parseInt(a)-parseInt(b));
             const ch24Row = createRow('2.4 GHz:', ch24.length ? ch24.join(', ') : 'None');
             body.appendChild(ch24Row);
 
-            // 5GHz row
-            const ch5 = ad.frequencies
-                .filter(f => parseInt(f) >= 3000 && parseInt(f) < 5900)
-                .map(f => freqToChannel[parseInt(f)]?.channel || 'Unknown')
-                .filter(ch => ch !== 'Unknown')
-                .sort((a, b) => parseInt(a) - parseInt(b));
+            const ch5 = ad.frequencies.filter(f => parseInt(f) >= 3000 && parseInt(f) < 5900).map(f => freqToChannel[parseInt(f)]?.channel || 'Unknown').filter(ch => ch !== 'Unknown').sort((a,b) => parseInt(a)-parseInt(b));
             const ch5Row = createRow('5 GHz:', ch5.length ? ch5.join(', ') : 'None');
             body.appendChild(ch5Row);
 
-            // 6GHz row
-            const ch6 = ad.frequencies
-                .filter(f => parseInt(f) >= 5900)
-                .map(f => freqToChannel[parseInt(f)]?.channel || 'Unknown')
-                .filter(ch => ch !== 'Unknown')
-                .sort((a, b) => parseInt(a) - parseInt(b));
+            const ch6 = ad.frequencies.filter(f => parseInt(f) >= 5900).map(f => freqToChannel[parseInt(f)]?.channel || 'Unknown').filter(ch => ch !== 'Unknown').sort((a,b) => parseInt(a)-parseInt(b));
             const ch6Row = createRow('6 GHz:', ch6.length ? ch6.join(', ') : 'None');
             body.appendChild(ch6Row);
 
-            // Dwell row
             const totalChannels = ch24.length + ch5.length + ch6.length;
             const dwellDisplay = totalChannels <= 1 ? 'N/A' : dwellDisplayMap[ad.dwell_time] || 'N/A';
             const dwellRow = createRow('Dwell:', dwellDisplay);
             body.appendChild(dwellRow);
 
-            // Filename prefix
-            const filenameRow = createRow('Filename prefix:', '');
+            const packetBtnRow = createRow('Packet types:', '');
+            const packetValue = packetBtnRow.querySelector('.value-col');
+            const packetBtn = document.createElement('button');
+            packetBtn.className = 'btn btn-outline-secondary';
+            packetBtn.textContent = 'Select packet types';
+            packetBtn.onclick = () => openPacketModal(ad.name, body, ad.capture_filter);
+            packetValue.appendChild(packetBtn);
+            body.appendChild(packetBtnRow);
+
+            const filenameRow = createRow('Filename sufix:', '');
             const filenameValue = filenameRow.querySelector('.value-col');
             const filenameInput = document.createElement('input');
             filenameInput.type = 'text';
-            filenameInput.value = `capture_${ad.name.replace('mon', '')}_`;
+            filenameInput.value = `capture_${ad.name.replace('mon', '')}`;
             filenameInput.disabled = ad.dumpcap_busy;
             filenameValue.appendChild(filenameInput);
             body.appendChild(filenameRow);
 
-            // File split
             const splitRow = createRow('File split:', '');
             const splitValue = splitRow.querySelector('.value-col');
             const splitRow1 = document.createElement('div');
             splitRow1.className = 'file-split-row';
-            const activeSplit = ad.split_time === 0 ? 'None' : ad.split_time === 60 ? '1 min' : ad.split_time === 300 ? '5 min' : ad.split_time === 600 ? '10 min' : ad.split_time === 3600 ? '1 hr' : '1 day';
+            const activeSplit = ad.split_time === 0 ? 'None' : Object.entries(splitMap).find(([k, v]) => v === ad.split_time)[0] || 'None';
             ['None', '1 min', '5 min'].forEach(s => {
                 const b = document.createElement('button');
                 b.className = `file-split-btn${activeSplit === s ? ' active' : ''}`;
@@ -495,14 +576,12 @@
             splitValue.appendChild(splitRow2);
             body.appendChild(splitRow);
 
-            // Capture button
             const captureBtn = document.createElement('button');
             captureBtn.className = `btn btn-primary${ad.dumpcap_busy ? ' capturing' : ''}`;
             captureBtn.textContent = ad.dumpcap_busy ? 'Stop capturing' : 'Capture';
             captureBtn.onclick = () => handleCapture(ad.name, body);
             body.appendChild(captureBtn);
 
-            // File name row
             let fileText = 'None';
             if (ad.dumpcap_busy) {
                 fileText = (ad.pcap_file ? ad.pcap_file.split('/').pop() : 'None') + (ad.split_time > 0 ? ' (split)' : '');
@@ -512,7 +591,6 @@
             const fileNameRow = createRow('File name:', fileText);
             body.appendChild(fileNameRow);
 
-            // File size row
             let sizeText = '0 MB';
             if (ad.dumpcap_busy) {
                 sizeText = `${ad.filesize} MB`;
@@ -527,7 +605,6 @@
             fileSizeValue.appendChild(sizeSpan);
             body.appendChild(fileSizeRow);
 
-            // Download button
             const downloadBtn = document.createElement('button');
             downloadBtn.className = 'btn btn-secondary';
             downloadBtn.textContent = ad.dumpcap_busy ? 'Download current capture' : 'Download last capture';
@@ -577,10 +654,12 @@
                 const filename = body.querySelector('input[type="text"]').value;
                 const split = body.querySelector('.file-split-btn.active').dataset.split;
                 const split_time = splitMap[split];
+                const selections = currentPacketSelections[adapter] || {};
+                const capture_filter = buildCaptureFilterClient(selections);
                 fetch('/start_capture', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({adapter, filename, split_time})
+                    body: JSON.stringify({adapter, filename, split_time, capture_filter})
                 })
                     .then(res => res.json())
                     .then(data => {
@@ -588,6 +667,55 @@
                         updateAdapters();
                     });
             }
+        }
+
+        function buildCaptureFilterClient(selections) {
+            const filters = [];
+            if (selections.mgt_all) {
+                filters.push('type mgt');
+            } else if (selections.mgt_specific) {
+                if (selections.beacon) filters.push('subtype beacon');
+                if (selections.probe_req) filters.push('subtype probe-req');
+                if (selections.probe_resp) filters.push('subtype probe-resp');
+                if (selections.auth) filters.push('subtype auth');
+                if (selections.assoc_req) filters.push('subtype assoc-req');
+                if (selections.assoc_resp) filters.push('subtype assoc-resp');
+                if (selections.reassoc_req) filters.push('subtype reassoc-req');
+                if (selections.reassoc_resp) filters.push('subtype reassoc-resp');
+                if (selections.disassoc) filters.push('subtype disassoc');
+                if (selections.deauth) filters.push('subtype deauth');
+                if (selections.atim) filters.push('subtype atim');
+            }
+            if (selections.ctl_all) {
+                filters.push('type ctl');
+            } else if (selections.ctl_specific) {
+                if (selections.rts) filters.push('subtype rts');
+                if (selections.cts) filters.push('subtype cts');
+                if (selections.ck) filters.push('subtype ack');
+                if (selections.ps_poll) filters.push('subtype ps-poll');
+                if (selections.cf_end) filters.push('subtype cf-end');
+                if (selections.cf_end_ack) filters.push('subtype cf-end-ack');
+            }
+            if (selections.data_all) {
+                filters.push('type data');
+            } else if (selections.data_specific) {
+                if (selections.eapol) filters.push('ether proto 0x888e');
+                if (selections.data_cf_ack) filters.push('subtype data-cf-ack');
+                if (selections.data_cf_poll) filters.push('subtype data-cf-poll');
+                if (selections.data_cf_ack_poll) filters.push('subtype data-cf-ack-poll');
+                if (selections.null) filters.push('subtype null');
+                if (selections.cf_ack) filters.push('subtype cf-ack');
+                if (selections.cf_poll) filters.push('subtype cf-poll');
+                if (selections.cf_ack_poll) filters.push('subtype cf-ack-poll');
+                if (selections.qos_data) filters.push('subtype qos-data');
+                if (selections.qos_data_cf_ack) filters.push('subtype qos-data-cf-ack');
+                if (selections.qos_data_cf_poll) filters.push('subtype qos-data-cf-poll');
+                if (selections.qos_data_cf_ack_poll) filters.push('subtype qos-data-cf-ack-poll');
+                if (selections.qos_null) filters.push('subtype qos');
+                if (selections.qos_cf_poll) filters.push('subtype qos-cf-poll');
+                if (selections.qos_cf_ack_poll) filters.push('subtype qos-cf-ack-poll');
+            }
+            return filters.join(' or ') || '';
         }
 
         function handleMultiCapture() {
@@ -611,10 +739,17 @@
                 const filename = document.getElementById('multi-filename').value;
                 const split = document.getElementById('multi-split').querySelector('.file-split-btn.active').dataset.split;
                 const split_time = splitMap[split];
+                const selections = currentPacketSelections['multi'] || {};
+                const capture_filter = buildCaptureFilterClient(selections);
                 fetch('/start_dumpcap', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({adapters: selectedAdapters, filename, split_time})
+                    body: JSON.stringify({
+                        adapters: selectedAdapters,
+                        filename,
+                        split_time,
+                        capture_filter
+                    })
                 })
                     .then(res => res.json())
                     .then(data => {
@@ -638,8 +773,13 @@
             ch24.forEach(ch => { const cb = document.getElementById(`ch24-${ch}`); if (cb) cb.checked = true; });
             ch5.forEach(ch => { const cb = document.getElementById(`ch5-${ch}`); if (cb) cb.checked = true; });
             ch6.forEach(ch => { const cb = document.getElementById(`ch6-${ch}`); if (cb) cb.checked = true; });
+
             document.querySelectorAll('.dwell-btn').forEach(b => b.classList.remove('active'));
-            document.querySelector('.dwell-btn[data-dwell="200ms"]').classList.add('active');
+            const currentDwellDisplay = dwellDisplayMap[body.dataset.dwell_time] || '200 ms';
+            const targetBtn = document.querySelector(`.dwell-btn[data-dwell="${currentDwellDisplay}"]`);
+            if (targetBtn) targetBtn.classList.add('active');
+            else document.querySelector('.dwell-btn[data-dwell="200 ms"]').classList.add('active');
+
             document.getElementById('channelModal').style.display = 'flex';
         }
 
@@ -675,16 +815,16 @@
             ch5Row.textContent = ch5Str;
             const ch6Row = currentCardBody.querySelectorAll('.row')[3].querySelector('.value-col');
             ch6Row.textContent = ch6Str;
-            const activeDwell = document.querySelector('.dwell-btn.active').dataset.dwell;
+            const activeDwellDisplay = document.querySelector('.dwell-btn.active').dataset.dwell;
             const dwellCol = currentCardBody.querySelectorAll('.row')[4].querySelector('.value-col');
-            dwellCol.textContent = newCount <= 1 ? 'N/A' : dwellDisplayMap[dwellMap[activeDwell]];
+            dwellCol.textContent = newCount <= 1 ? 'N/A' : activeDwellDisplay;
             closeModal();
 
             let frequencies = [];
             ch24.forEach(ch => frequencies.push(channelToFreq['2.4'][ch]));
             ch5.forEach(ch => frequencies.push(channelToFreq['5'][ch]));
             ch6.forEach(ch => frequencies.push(channelToFreq['6'][ch]));
-            const dwell_time = dwellMap[activeDwell];
+            const dwell_time = dwellMap[activeDwellDisplay];
 
             if (newCount > 0) {
                 fetch('/start_monitoring', {
@@ -711,6 +851,159 @@
             }
         }
 
+        function openPacketModal(adapter, body, current_filter) {
+            currentAdapter = adapter;
+            currentCardBody = body;
+
+            const saved = currentPacketSelections[adapter] || {
+                mgt_all: true, mgt_none: false, mgt_specific: false,
+                ctl_all: true, ctl_none: false, ctl_specific: false,
+                data_all: true, data_none: false, data_specific: false
+            };
+
+            document.getElementById('mgt_all').checked = saved.mgt_all;
+            document.getElementById('mgt_none').checked = saved.mgt_none;
+            document.getElementById('mgt_specific_radio').checked = saved.mgt_specific;
+
+            document.getElementById('ctl_all').checked = saved.ctl_all;
+            document.getElementById('ctl_none').checked = saved.ctl_none;
+            document.getElementById('ctl_specific_radio').checked = saved.ctl_specific;
+
+            document.getElementById('data_all').checked = saved.data_all;
+            document.getElementById('data_none').checked = saved.data_none;
+            document.getElementById('data_specific_radio').checked = saved.data_specific;
+
+            ['mgt', 'ctl', 'data'].forEach(group => {
+                const div = document.getElementById(group + '_specific');
+                const isSpecific = saved[group + '_specific'];
+                if (isSpecific) {
+                    div.classList.add('enabled');
+                    div.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.disabled = false);
+                } else {
+                    div.classList.remove('enabled');
+                    div.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                        cb.checked = false;
+                        cb.disabled = true;
+                    });
+                }
+            });
+
+            if (saved.mgt_specific) {
+                document.getElementById('mgt_beacon').checked = saved.beacon || false;
+                document.getElementById('mgt_probe_req').checked = saved.probe_req || false;
+                document.getElementById('mgt_probe_resp').checked = saved.probe_resp || false;
+                document.getElementById('mgt_auth').checked = saved.auth || false;
+                document.getElementById('mgt_assoc_req').checked = saved.assoc_req || false;
+                document.getElementById('mgt_assoc_resp').checked = saved.assoc_resp || false;
+                document.getElementById('mgt_reassoc_req').checked = saved.reassoc_req || false;
+                document.getElementById('mgt_reassoc_resp').checked = saved.reassoc_resp || false;
+                document.getElementById('mgt_disassoc').checked = saved.disassoc || false;
+                document.getElementById('mgt_deauth').checked = saved.deauth || false;
+                document.getElementById('mgt_atim').checked = saved.atim || false;
+            }
+
+            if (saved.ctl_specific) {
+                document.getElementById('ctl_rts').checked = saved.rts || false;
+                document.getElementById('ctl_cts').checked = saved.cts || false;
+                document.getElementById('ctl_ack').checked = saved.ack || false;
+                document.getElementById('ctl_ps_poll').checked = saved.ps_poll || false;
+                document.getElementById('ctl_cf_end').checked = saved.cf_end || false;
+                document.getElementById('ctl_cf_end_ack').checked = saved.cf_end_ack || false;
+            }
+
+            if (saved.data_specific) {
+                document.getElementById('data_eapol').checked = saved.eapol || false;
+                document.getElementById('data_data_cf_ack').checked = saved.data_cf_ack || false;
+                document.getElementById('data_data_cf_poll').checked = saved.data_cf_poll || false;
+                document.getElementById('data_data_cf_ack_poll').checked = saved.data_cf_ack_poll || false;
+                document.getElementById('data_null').checked = saved.null || false;
+                document.getElementById('data_cf_ack').checked = saved.cf_ack || false;
+                document.getElementById('data_cf_poll').checked = saved.cf_poll || false;
+                document.getElementById('data_cf_ack_poll').checked = saved.cf_ack_poll || false;
+                document.getElementById('data_qos_data').checked = saved.qos_data || false;
+                document.getElementById('data_qos_data_cf_ack').checked = saved.qos_data_cf_ack || false;
+                document.getElementById('data_qos_data_cf_poll').checked = saved.qos_data_cf_poll || false;
+                document.getElementById('data_qos_data_cf_ack_poll').checked = saved.qos_data_cf_ack_poll || false;
+                document.getElementById('data_qos_null').checked = saved.qos_null || false;
+                document.getElementById('data_qos_cf_poll').checked = saved.qos_cf_poll || false;
+                document.getElementById('data_qos_cf_ack_poll').checked = saved.qos_cf_ack_poll || false;
+            }
+
+            document.getElementById('packetModal').style.display = 'flex';
+        }
+
+        function closePacketModal() {
+            document.getElementById('packetModal').style.display = 'none';
+        }
+
+        function savePacketTypes() {
+            const selections = {
+                mgt_all: document.getElementById('mgt_all').checked,
+                mgt_none: document.getElementById('mgt_none').checked,
+                mgt_specific: document.getElementById('mgt_specific_radio').checked,
+                beacon: document.getElementById('mgt_beacon').checked,
+                probe_req: document.getElementById('mgt_probe_req').checked,
+                probe_resp: document.getElementById('mgt_probe_resp').checked,
+                auth: document.getElementById('mgt_auth').checked,
+                assoc_req: document.getElementById('mgt_assoc_req').checked,
+                assoc_resp: document.getElementById('mgt_assoc_resp').checked,
+                reassoc_req: document.getElementById('mgt_reassoc_req').checked,
+                reassoc_resp: document.getElementById('mgt_reassoc_resp').checked,
+                disassoc: document.getElementById('mgt_disassoc').checked,
+                deauth: document.getElementById('mgt_deauth').checked,
+                atim: document.getElementById('mgt_atim').checked,
+                ctl_all: document.getElementById('ctl_all').checked,
+                ctl_none: document.getElementById('ctl_none').checked,
+                ctl_specific: document.getElementById('ctl_specific_radio').checked,
+                rts: document.getElementById('ctl_rts').checked,
+                cts: document.getElementById('ctl_cts').checked,
+                ack: document.getElementById('ctl_ack').checked,
+                ps_poll: document.getElementById('ctl_ps_poll').checked,
+                cf_end: document.getElementById('ctl_cf_end').checked,
+                cf_end_ack: document.getElementById('ctl_cf_end_ack').checked,
+                data_all: document.getElementById('data_all').checked,
+                data_none: document.getElementById('data_none').checked,
+                data_specific: document.getElementById('data_specific_radio').checked,
+                eapol: document.getElementById('data_eapol').checked,
+                data_cf_ack: document.getElementById('data_data_cf_ack').checked,
+                data_cf_poll: document.getElementById('data_data_cf_poll').checked,
+                data_cf_ack_poll: document.getElementById('data_data_cf_ack_poll').checked,
+                null: document.getElementById('data_null').checked,
+                cf_ack: document.getElementById('data_cf_ack').checked,
+                cf_poll: document.getElementById('data_cf_poll').checked,
+                cf_ack_poll: document.getElementById('data_cf_ack_poll').checked,
+                qos_data: document.getElementById('data_qos_data').checked,
+                qos_data_cf_ack: document.getElementById('data_qos_data_cf_ack').checked,
+                qos_data_cf_poll: document.getElementById('data_qos_data_cf_poll').checked,
+                qos_data_cf_ack_poll: document.getElementById('data_qos_data_cf_ack_poll').checked,
+                qos_null: document.getElementById('data_qos_null').checked,
+                qos_cf_poll: document.getElementById('data_qos_cf_poll').checked,
+                qos_cf_ack_poll: document.getElementById('data_qos_cf_ack_poll').checked
+            };
+
+            currentPacketSelections[currentAdapter] = selections;
+
+            closePacketModal();
+            showNotification('Packet type filter saved (applied on next capture)');
+        }
+
+        document.querySelectorAll('#packetModal input[type="radio"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                const group = this.name.replace('_group', '');
+                const specificDiv = document.getElementById(group + '_specific');
+                if (this.id === group + '_specific_radio') {
+                    specificDiv.classList.add('enabled');
+                    specificDiv.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.disabled = false);
+                } else {
+                    specificDiv.classList.remove('enabled');
+                    specificDiv.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                        cb.checked = false;
+                        cb.disabled = true;
+                    });
+                }
+            });
+        });
+
         const shutdownModal = document.getElementById('shutdown-modal');
         const shutdownBtn = document.getElementById('shutdown-btn');
         const shutdownNo = document.getElementById('shutdown-no');
@@ -728,6 +1021,7 @@
         };
 
         document.getElementById('multi-capture-btn').onclick = handleMultiCapture;
+
         document.querySelectorAll('.dwell-btn').forEach(btn => btn.onclick = (e) => {
             document.querySelectorAll('.dwell-btn').forEach(b => b.classList.remove('active'));
             e.target.classList.add('active');
