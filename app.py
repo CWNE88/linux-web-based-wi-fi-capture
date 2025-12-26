@@ -147,10 +147,15 @@ def get_interfaces_info():
 def get_adapters():
     try:
         interfaces = get_interfaces_info()
-        non_monitor_adapters = [i['interface'] for i in interfaces if i['phy'] != 'phy#0' and i['type'] == 'managed' and i['interface'].startswith('wlan') and not i['interface'].endswith('mon')]
-        monitor_adapters = [i['interface'] for i in interfaces if i['phy'] != 'phy#0' and i['type'] == 'monitor' and i['interface'].startswith('wlan') and i['interface'].endswith('mon')]
-        all_adapters = list(set(non_monitor_adapters + monitor_adapters))
-        return sorted(all_adapters)
+        # Only return monitor-mode adapters (ending with 'mon')
+        monitor_adapters = [
+            i['interface'] for i in interfaces
+            if i['phy'] != 'phy#0'
+            and i['type'] == 'monitor'
+            and i['interface'].startswith('wlan')
+            and i['interface'].endswith('mon')
+        ]
+        return sorted(monitor_adapters)
     except Exception:
         return []
 
